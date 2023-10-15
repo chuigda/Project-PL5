@@ -99,8 +99,7 @@ int main(int argc, char **argv) {
 }
 
 static char* read_to_string(char const *file) {
-    FILE *f = fopen(file, "r");
-    fprintf(stderr, "DEBUG: file = %s\n", file);
+    FILE *f = fopen(file, "rb");
     if (!f) {
         return 0;
     }
