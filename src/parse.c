@@ -11,7 +11,8 @@ static mscm_syntax_node parse_item(tokenise_ctx *tokeniser);
 static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
                                          uint8_t paren_kind);
 static mscm_syntax_node parse_item_list(tokenise_ctx *tokeniser,
-                                        uint8_t rparen_kind);
+                                        uint8_t rparen_kind,
+                                        bool *ok);
 static mscm_syntax_node parse_define(tokenise_ctx *tokeniser,
                                      uint8_t rparen_kind);
 static mscm_syntax_node parse_defvar(tokenise_ctx *tokeniser,
@@ -139,8 +140,10 @@ static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
             return 0;
         }
 
-        mscm_syntax_node args = parse_item_list(tokeniser, rparen_kind);
-        if (!args) {
+        bool ok;
+        mscm_syntax_node args =
+            parse_item_list(tokeniser, rparen_kind, &ok);
+        if (!ok) {
             mscm_free_syntax_node(callee);
             return 0;
         }
@@ -151,13 +154,17 @@ static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
 }
 
 static mscm_syntax_node parse_item_list(tokenise_ctx *tokeniser,
-                                        uint8_t rparen_kind) {
+                                        uint8_t rparen_kind,
+                                        bool *ok) {
     mscm_syntax_node ret = 0, current = 0;
     while (peek_token(tokeniser).tk != rparen_kind
            && peek_token(tokeniser).tk != TK_EOI) {
         mscm_syntax_node node = parse_item(tokeniser);
         if (!node) {
             mscm_free_syntax_node(ret);
+            if (ok) {
+                *ok = false;
+            }
             return 0;
         }
 
@@ -175,10 +182,16 @@ static mscm_syntax_node parse_item_list(tokenise_ctx *tokeniser,
         err_print(tokeniser->file, tokeniser->line,
                   "unexpected end of input");
         mscm_free_syntax_node(ret);
+        if (ok) {
+            *ok = false;
+        }
         return 0;
     }
 
     get_token(tokeniser);
+    if (ok) {
+        *ok = true;
+    }
     return ret;
 }
 
@@ -246,7 +259,7 @@ static mscm_syntax_node parse_defun(tokenise_ctx *tokeniser,
         return 0;
     }
 
-    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind);
+    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind, 0);
     if (!body) {
         mscm_free_syntax_node((mscm_syntax_node)param_names);
         err_print(fn_name.file, fn_name.line,
@@ -277,7 +290,7 @@ static mscm_syntax_node parse_lambda(tokenise_ctx *tokeniser,
         return 0;
     }
 
-    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind);
+    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind, 0);
     if (!body) {
         mscm_free_syntax_node((mscm_syntax_node)param_names);
         err_print(lambda.file, lambda.line,
@@ -518,7 +531,6 @@ static mscm_ident* parse_ident_list(tokenise_ctx *tokeniser) {
 static void unexpected_token(token t) {
     err_printf(t.file, t.line, "unexpected %s",
                tk_string(t.tk));
-    abort();
 }
 
 static char const *tk_string(uint8_t tk) {

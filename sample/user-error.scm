@@ -1,3 +1,9 @@
-(define (d x y) (error "fatal error occurred!"))
+(define (a) (b))
 
-(d 114 514)
+(define (b) (c))
+
+(define (c) (d))
+
+(define (d) (error "fatal error occurred!"))
+
+(a)

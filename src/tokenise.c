@@ -87,6 +87,7 @@ void unget_token(tokenise_ctx *ctx, token t) {
 
 bool token_is_ident(token t, char const *ident) {
     return t.tk == TK_IDENT &&
+        t.value.s.len == strlen(ident) &&
         !strncmp(t.value.s.start, ident, t.value.s.len);
 }
 

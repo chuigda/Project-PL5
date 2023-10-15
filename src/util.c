@@ -10,6 +10,7 @@ void err_print(char const *file, size_t line, char const *error) {
     fprintf(stderr,
             "error: %s:%" PRIu64 ": %s\n",
             file ? file : "(unknown)", (uint64_t)line, error);
+
 }
 
 void err_printf(char const *file, size_t line, char const *fmt, ...) {
