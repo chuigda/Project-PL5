@@ -12,15 +12,19 @@
 #include "value.h"
 #include "scope_impl.h"
 
-static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok);
+static mscm_value runtime_get(mscm_runtime *rt,
+                              const char *name,
+                              bool *ok);
 static void runtime_push(mscm_runtime *rt,
                          const char *name,
                          mscm_value value);
 static void runtime_push_scope(mscm_runtime *rt, mscm_scope *scope);
-static void runtime_push_scope_chain(mscm_runtime *rt, mscm_scope *scope);
+static void runtime_push_scope_chain(mscm_runtime *rt,
+                                     mscm_scope *scope);
 static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_pop_scope_chain(mscm_runtime *rt);
-static void runtime_add_rooted_group(mscm_runtime *rt, rooted_group *group);
+static void runtime_add_rooted_group(mscm_runtime *rt,
+                                     rooted_group *group);
 static void runtime_remove_rooted_group(mscm_runtime *rt,
                                         rooted_group *group);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
@@ -282,7 +286,8 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         if (current_root) {
             current_root->next = arg_root;
             current_root = arg_root;
-        } else {
+        }
+        else {
             arg_roots.values = arg_root;
             current_root = arg_root;
         }
@@ -346,7 +351,8 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         }
 
         return ret;
-    } else {
+    }
+    else {
         size_t narg = 0;
         rooted_value *arg_iter = arg_roots.values;
         while (arg_iter) {
@@ -514,7 +520,8 @@ static void runtime_remove_rooted_group(mscm_runtime *rt,
     if (rt->rooted_groups == group) {
         rt->rooted_groups = group->next;
         return;
-    } else {
+    }
+    else {
         rooted_group *iter = rt->rooted_groups;
         while (iter) {
             if (iter->next == group) {

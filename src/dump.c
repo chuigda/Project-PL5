@@ -59,7 +59,8 @@ void mscm_value_dump(mscm_value value) {
             if (h->dtor) {
                 printf("<handle ptr=%p, dtor=%p>",
                        h->ptr, (void*)h->dtor);
-            } else {
+            }
+            else {
                 printf("<handle ptr=%p>", h->ptr);
             }
             break;

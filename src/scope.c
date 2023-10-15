@@ -82,7 +82,8 @@ mscm_value mscm_scope_get(mscm_scope *scope,
 
     if (scope->parent) {
         return mscm_scope_get(scope->parent, name, ok);
-    } else {
+    }
+    else {
         *ok = false;
         return 0;
     }

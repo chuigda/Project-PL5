@@ -13,6 +13,8 @@ typedef struct st_mscm_runtime mscm_runtime;
 void mscm_runtime_push(mscm_runtime *rt,
                        const char *name,
                        mscm_value value);
+mscm_value mscm_runtime_global_get(mscm_runtime *rt,
+                                   const char *name);
 void mscm_toggle_gc(mscm_runtime *rt, bool enable);
 void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value);
 void mscm_runtime_trace_exit(mscm_runtime *rt);
