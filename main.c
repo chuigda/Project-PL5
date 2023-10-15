@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
     mscm_runtime *rt = runtime_new();
     mscm_value display_fn = mscm_make_native_function(display, 0, 0);
     mscm_runtime_push(rt, "display", (mscm_value)display_fn);
+    mscm_runtime_gc_add(rt, display_fn);
 
     for (int i = 1; i < argc; ++i) {
         char *content = read_to_string(argv[i]);

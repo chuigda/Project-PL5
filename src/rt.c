@@ -48,6 +48,7 @@ mscm_runtime *runtime_new() {
     rt->scope_chain->parent = 0;
     rt->scope_chain->chain = rt->global_scope;
 
+    rt->gc_enabled = true;
     rt->alloc_count = 0;
     memset(rt->gc_pool_buckets, 0, sizeof(rt->gc_pool_buckets));
     return rt;
@@ -73,6 +74,8 @@ void runtime_free(mscm_runtime *rt) {
         mscm_scope_decref(current->chain);
         free(current);
     }
+
+    free(rt);
 }
 
 void mscm_runtime_push(mscm_runtime *rt,
@@ -269,8 +272,10 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             mscm_scope_push(func_scope,
                             param_iter->ident,
                             arg_iter->value);
+            rooted_value *current = arg_iter;
             arg_iter = arg_iter->next;
             param_iter = (mscm_ident*)param_iter->next;
+            free(current);
         }
 
         if (arg_iter || param_iter) {
@@ -302,18 +307,17 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         arg_iter = arg_roots.values;
         for (size_t i = 0; i < narg; i++) {
             args[i] = arg_iter->value;
+            rooted_value *current = arg_iter;
             arg_iter = arg_iter->next;
+            free(current);
         }
+        runtime_remove_rooted_group(rt, &arg_roots);
 
         mscm_native_function *native = (mscm_native_function*)callee;
         mscm_value ret = native->fnptr(rt,
                                        runtime_current_scope(rt),
                                        native->ctx,
                                        narg, args);
-        runtime_remove_rooted_group(rt, &arg_roots);
-        if (ret) {
-            mscm_runtime_gc_add(rt, ret);
-        }
         return ret;
     }
 }
