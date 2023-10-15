@@ -41,7 +41,7 @@ void mscm_scope_push(mscm_scope *scope,
     if (!item) {
         return;
     }
-    item->next = chain;
+    item->next = scope->buckets[bucket];
     item->value = value;
     strcpy(item->key, name);
     scope->buckets[bucket] = item;

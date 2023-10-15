@@ -33,7 +33,7 @@ static bool node_is_ident(mscm_syntax_node node, char const *ident);
 static void runtime_gc_collect(mscm_runtime *rt);
 static void runtime_gc_mark(mscm_value value);
 static void runtime_gc_mark_scope(mscm_scope *scope);
-static char const* mscm_value_to_string(mscm_value value);
+static char const* value_type_to_string(mscm_value value);
 
 mscm_runtime *runtime_new() {
     MALLOC_CHK_RET(mscm_runtime, rt);
@@ -52,6 +52,7 @@ mscm_runtime *runtime_new() {
 
     rt->scope_chain->parent = 0;
     rt->scope_chain->chain = rt->global_scope;
+    rt->rooted_groups = 0;
 
     rt->gc_enabled = true;
     rt->alloc_count = 0;
@@ -271,7 +272,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
          callee->type != MSCM_TYPE_NATIVE)) {
         err_printf(apply->callee->file, apply->callee->line,
                    "%s is not a function",
-                   mscm_value_to_string(callee));
+                   value_type_to_string(callee));
         mscm_runtime_trace_exit(rt);
     }
 
@@ -418,7 +419,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
     }
 
     iter = rt->gc_pool;
-    while (iter && !iter[0].value->gc_mark) {
+    while (iter && !iter->value->gc_mark) {
         managed_value *current = iter;
         iter = iter->next;
         mscm_free_value(current->value);
@@ -503,7 +504,11 @@ static void runtime_gc_mark_scope(mscm_scope *scope) {
     }
 }
 
-static char const* mscm_value_to_string(mscm_value value) {
+static char const* value_type_to_string(mscm_value value) {
+    if (!value) {
+        return "<null>";
+    }
+
     switch (value->type) {
         case MSCM_TYPE_INT: return "<int>";
         case MSCM_TYPE_FLOAT: return "<float>";

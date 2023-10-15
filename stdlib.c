@@ -360,7 +360,7 @@ MSCM_NATIVE_FN(list) {
     mscm_value ret = 0;
     for (size_t i = narg; i > 0; i--) {
         ret = mscm_make_pair(args[i - 1], ret);
+        mscm_runtime_gc_add(rt, ret);
     }
-    mscm_runtime_gc_add(rt, ret);
     return ret;
 }
