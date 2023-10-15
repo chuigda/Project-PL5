@@ -8,14 +8,17 @@ ifndef RANLIB
 	RANLIB = ranlib
 endif
 ifndef CFLAGS
-	CFLAGS = -Wall -Wextra -Wno-pedantic -g $(EXTRA_CFLAGS)
+	CFLAGS = -Wall -Wextra -Wno-pedantic -Wno-cast-function-type -g\
+				$(EXTRA_CFLAGS)
 endif
 
 ifndef WIN32
 	SHARED_LIB_NAME = libmscm.so
+	STDLIB_LIB_NAME = libmscmstd.so
 	EXECUTABLE_NAME = mscm
 else
 	SHARED_LIB_NAME = libmscm.dll
+	STDLIB_LIB_NAME = libmscmstd.dll
 	EXECUTABLE_NAME = mscm.exe
 endif
 
@@ -34,6 +37,9 @@ HEADER_FILES = $(wildcard include/*.h) $(wildcard src/include/*.h)
 SOURCE_FILES = $(wildcard src/*.c)
 OBJECT_FILES := $(patsubst src/%.c,%.o,$(SOURCE_FILES))
 
+.PHONY: all
+all: libmscm-phony libmscmstd-phony mscm-phony
+
 .PHONY: mscm-phony mscm-log
 mscm-phony: libmscm-phony mscm-log $(EXECUTABLE_NAME)
 
@@ -44,7 +50,20 @@ $(EXECUTABLE_NAME): $(HEADER_FILES) main.o
 	$(call LOG,LINK,$(EXECUTABLE_NAME))
 	@$(CC) $(CFLAGS) main.o -L. -lmscm -o $(EXECUTABLE_NAME)
 
-main.o: main.c
+main.o: main.c $(HEADER_FILES)
+	$(call COMPILE,$<,$@)
+
+.PHONY: libmscmstd-phony libmscmstd-log
+libmscmstd-phony: libmscm-phony libmscmstd-log $(STDLIB_LIB_NAME)
+
+libmscmstd-log:
+	@echo Building shared library $(STDLIB_LIB_NAME)
+
+$(STDLIB_LIB_NAME): $(HEADER_FILES) $(SHARED_LIB_NAME) stdlib.o
+	$(call LOG,LINK,$(STDLIB_LIB_NAME))
+	@$(CC) $(CFLAGS) stdlib.o -L. -lmscm -fPIC -shared -o $(STDLIB_LIB_NAME)
+
+stdlib.o: stdlib.c $(HEADER_FILES)
 	$(call COMPILE,$<,$@)
 
 .PHONY: libmscm-phony libmscm-log

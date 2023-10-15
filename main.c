@@ -9,12 +9,17 @@
 #include "value.h"
 #include "dump.h"
 
+#ifdef _WIN32
+#   include <windows.h>
+#else
+#   include <dlfcn.h>
+#   include <unistd.h>
+#endif /* _WIN32 */
+
 static char* read_to_string(char const *file);
-static mscm_value display(mscm_runtime *rt,
-                          mscm_scope *scope,
-                          void *ctx,
-                          size_t narg,
-                          mscm_value *args);
+static bool ends_with(char const *str, char const *suffix);
+
+typedef void (*mscm_ext_loader)(mscm_runtime *rt);
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -23,27 +28,70 @@ int main(int argc, char **argv) {
     }
 
     mscm_runtime *rt = runtime_new();
-    mscm_value display_fn = mscm_make_native_function(display, 0, 0);
-    mscm_runtime_push(rt, "display", (mscm_value)display_fn);
-    mscm_runtime_gc_add(rt, display_fn);
-
     for (int i = 1; i < argc; ++i) {
-        char *content = read_to_string(argv[i]);
-        if (!content) {
-            fprintf(stderr, "error: could not read file %s\n", argv[i]);
-            continue;
-        }
+        if (ends_with(argv[i], ".dll") || ends_with(argv[i], ".so")) {
+#ifdef _WIN32
+            HANDLE h = LoadLibraryA(argv[i]);
+            if (!h) {
+                fprintf(stderr,
+                        "error: could not load library %s\n",
+                        argv[i]);
+                continue;
+            }
 
-        mscm_syntax_node node = mscm_parse(argv[i], content);
-        if (!node) {
-            fprintf(stderr, "error: could not parse file %s\n", argv[i]);
+            mscm_ext_loader loader =
+                (mscm_ext_loader)GetProcAddress(h, "mscm_load_ext");
+            if (!loader) {
+                fprintf(stderr,
+                        "error: could not locate mscm_load_ext in %s\n",
+                        argv[i]);
+                FreeLibrary(h);
+                continue;
+            }
+#else
+            void *h = dlopen(argv[i], RTLD_LAZY | RTLD_DEEPBIND);
+            if (!h) {
+                fprintf(stderr,
+                        "error: could not load library %s\n",
+                        argv[i]);
+                continue;
+            }
+
+            mscm_ext_loader loader =
+                (mscm_ext_loader)dlsym(h, "mscm_load_ext");
+            if (!loader) {
+                fprintf(stderr,
+                        "error: could not locate mscm_load_ext in %s\n",
+                        argv[i]);
+                dlclose(h);
+                continue;
+            }
+#endif /* _WIN32 */
+            loader(rt);
+        }
+        else {
+            char *content = read_to_string(argv[i]);
+            fprintf(stderr, "DEBUG: content = %s\n", content);
+            if (!content) {
+                fprintf(stderr,
+                        "error: could not read file %s\n",
+                        argv[i]);
+                continue;
+            }
+
+            mscm_syntax_node node = mscm_parse(argv[i], content);
+            if (!node) {
+                fprintf(stderr,
+                        "error: could not parse file %s\n",
+                        argv[i]);
+                free(content);
+                continue;
+            }
+
+            runtime_eval(rt, node, true);
+            mscm_free_syntax_node(node);
             free(content);
-            continue;
         }
-
-        runtime_eval(rt, node, true);
-        mscm_free_syntax_node(node);
-        free(content);
     }
     runtime_free(rt);
 
@@ -52,6 +100,7 @@ int main(int argc, char **argv) {
 
 static char* read_to_string(char const *file) {
     FILE *f = fopen(file, "r");
+    fprintf(stderr, "DEBUG: file = %s\n", file);
     if (!f) {
         return 0;
     }
@@ -72,19 +121,11 @@ static char* read_to_string(char const *file) {
     return buf;
 }
 
-static mscm_value display(mscm_runtime *rt,
-                          mscm_scope *scope,
-                          void *ctx,
-                          size_t narg,
-                          mscm_value *args) {
-    (void)rt;
-    (void)scope;
-    (void)ctx;
-
-    for (size_t i = 0; i < narg; i++) {
-        mscm_value_dump(args[i]);
-        putchar(' ');
+static bool ends_with(char const *str, char const *suffix) {
+    size_t str_len = strlen(str);
+    size_t suffix_len = strlen(suffix);
+    if (str_len < suffix_len) {
+        return false;
     }
-    putchar('\n');
-    return 0;
+    return !strcmp(str + str_len - suffix_len, suffix);
 }
