@@ -1,9 +1,14 @@
-(define ls (list 1 2 3 '1 '2 '3))
-(display ls)
+(define list1 (list 1 2 3 '1 '2 '3))
+(define list2 '(1 2 3 a b c))
 
 (define (display-one-by-one ls)
     (cond [(= ls '()) (begin)]
           [else (begin
                     (display (car ls))
                     (display-one-by-one (cdr ls)))]))
-(display-one-by-one ls)
+
+(display list1)
+(display-one-by-one list1)
+
+(display list2)
+(display-one-by-one list2)
