@@ -89,6 +89,7 @@ typedef struct {
 mscm_value mscm_make_int(int64_t value);
 mscm_value mscm_make_float(double value);
 mscm_value mscm_make_string(mscm_slice value, bool escape, bool *esc_ok);
+mscm_value mscm_alloc_string(size_t size);
 mscm_value mscm_make_pair(mscm_value fst, mscm_value snd);
 mscm_value mscm_make_function(mscm_func_def *fndef,
                                   mscm_scope *scope);

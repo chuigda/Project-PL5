@@ -90,6 +90,18 @@ mscm_value mscm_make_string(mscm_slice value,
     return (mscm_value)ret;
 }
 
+mscm_value mscm_alloc_string(size_t size) {
+    mscm_string *ret = malloc(sizeof(mscm_string) + size + 1);
+    if (!ret) {
+        return 0;
+    }
+
+    MSCM_VALUE_COMMON_INIT(ret, MSCM_TYPE_STRING);
+    ret->size = size;
+    ret->buf[size] = '\0';
+    return (mscm_value)ret;
+}
+
 mscm_value mscm_make_pair(mscm_value fst, mscm_value snd) {
     MALLOC_CHK_RET(mscm_pair, ret);
     MSCM_VALUE_COMMON_INIT(ret, MSCM_TYPE_PAIR);

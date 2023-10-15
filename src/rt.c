@@ -154,14 +154,14 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 while (cond) {
                     if (node_is_ident(cond, "otherwise") ||
                         node_is_ident(cond, "else")) {
-                        ret = runtime_eval(rt, then, true);
+                        ret = runtime_eval(rt, then, false);
                         break;
                     }
 
                     mscm_value cond_result =
-                        runtime_eval(rt, cond, true);
+                        runtime_eval(rt, cond, false);
                     if (mscm_value_is_true(cond_result)) {
-                        ret = runtime_eval(rt, then, true);
+                        ret = runtime_eval(rt, then, false);
                         break;
                     }
 

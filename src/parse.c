@@ -134,6 +134,16 @@ static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
     else if (token_is_ident(t, "if")) {
         return parse_if(tokeniser, rparen_kind);
     }
+    else if (token_is_ident(t, "begin")) {
+        token begin = get_token(tokeniser);
+        bool ok;
+        mscm_syntax_node body =
+            parse_item_list(tokeniser, rparen_kind, &ok);
+        if (!ok) {
+            return 0;
+        }
+        return mscm_make_begin(begin.file, begin.line, body);
+    }
     else {
         mscm_syntax_node callee = parse_item(tokeniser);
         if (!callee) {
