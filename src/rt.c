@@ -128,6 +128,16 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 ret = mscm_make_function(fndef, capture_scope);
                 mscm_runtime_gc_add(rt, ret);
                 if (node->kind == MSCM_SYN_DEFUN) {
+                    bool defined;
+                    mscm_scope_get(runtime_current_scope(rt),
+                                   fndef->func_name,
+                                   &defined);
+                    if (defined) {
+                        err_printf(node->file, node->line,
+                                   "%s already defined in current scope",
+                                   fndef->func_name);
+                        mscm_runtime_trace_exit(rt);
+                    }
                     runtime_push(rt, fndef->func_name, ret);
                 }
                 break;

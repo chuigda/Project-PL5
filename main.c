@@ -71,7 +71,6 @@ int main(int argc, char **argv) {
         }
         else {
             char *content = read_to_string(argv[i]);
-            fprintf(stderr, "DEBUG: content = %s\n", content);
             if (!content) {
                 fprintf(stderr,
                         "error: could not read file %s\n",
