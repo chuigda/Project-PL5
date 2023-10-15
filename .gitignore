@@ -1,0 +1,14 @@
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.core
+mscm
+vgcore*
+core*
+
+.vscode
+.idea
+
+sample/drill.scm
