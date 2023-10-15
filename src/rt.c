@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,6 +53,8 @@ mscm_runtime *runtime_new() {
     rt->gc_enabled = true;
     rt->alloc_count = 0;
     memset(rt->gc_pool_buckets, 0, sizeof(rt->gc_pool_buckets));
+
+    rt->trace = 0;
     return rt;
 }
 
@@ -101,8 +105,8 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 ret = runtime_get(rt, ident->ident, &ok);
                 if (!ok) {
                     err_printf(node->file, node->line,
-                            "undefined variable: %s\n", ident->ident);
-                    exit(1);
+                            "undefined variable: %s", ident->ident);
+                    mscm_runtime_trace_exit(rt);
                 }
                 break;
             }
@@ -203,6 +207,29 @@ void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value) {
     rt->alloc_count += 1;
 }
 
+void mscm_runtime_trace_exit(mscm_runtime *rt) {
+    stack_trace *trace = rt->trace;
+    while (trace) {
+        if (trace->fndef->kind == MSCM_SYN_DEFUN) {
+            fprintf(stderr,
+                    "\t when calling `%s` from %s:%" PRIu64 "\n",
+                    trace->fndef->func_name,
+                    trace->file ? trace->file : "unknown",
+                    (uint64_t)trace->line);
+        }
+        else {
+            fprintf(stderr,
+                    "\t when calling <lambda %s:%" PRIu64 "> from %s:%" PRIu64 "\n",
+                    trace->fndef->file, (uint64_t)trace->fndef->line,
+                    trace->file ? trace->file : "unknown",
+                    (uint64_t)trace->line);
+        }
+
+        trace = trace->next;
+    }
+    exit(1);
+}
+
 static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok) {
     return mscm_scope_get(rt->scope_chain->chain, name, ok);
 }
@@ -225,7 +252,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         err_printf(apply->callee->file, apply->callee->line,
                    "%s is not a function",
                    mscm_value_to_string(callee));
-        exit(1);
+        mscm_runtime_trace_exit(rt);
     }
 
     rooted_group arg_roots = { 0, 0 };
@@ -237,7 +264,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         rooted_value *arg_root = malloc(sizeof(rooted_value));
         if (!arg_root) {
             err_print(arg->file, arg->line, "out of memory");
-            exit(1);
+            mscm_runtime_trace_exit(rt);
         }
 
         arg_root->value = arg_value;
@@ -283,11 +310,25 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
                        "when calling %s: argument count mismatch",
                        fndef->kind == MSCM_SYN_DEFUN
                            ? fndef->func_name : "lambda");
-            exit(1);
+            mscm_runtime_trace_exit(rt);
         }
 
         runtime_push_scope(rt, mscm_scope_new(func_scope));
+
+        stack_trace *trace = malloc(sizeof(stack_trace));
+        if (trace) {
+            trace->next = rt->trace;
+            trace->file = apply->file;
+            trace->line = apply->line;
+            trace->fndef = fndef;
+            rt->trace = trace;
+        }
         mscm_value ret = runtime_eval(rt, fndef->body, true);
+        if (trace) {
+            rt->trace = trace->next;
+            free(trace);
+        }
+
         runtime_pop_scope(rt); /* function inner scope */
         runtime_pop_scope(rt); /* function scope */
         if (func->scope) {
@@ -431,7 +472,7 @@ static void runtime_push_scope_chain(mscm_runtime *rt, mscm_scope *scope) {
     scope_chain_node *node = malloc(sizeof(scope_chain_node));
     if (!node) {
         err_print(0, 0, "out of memory");
-        exit(1);
+        mscm_runtime_trace_exit(rt);
     }
 
     node->parent = rt->scope_chain;

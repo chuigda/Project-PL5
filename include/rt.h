@@ -15,6 +15,7 @@ void mscm_runtime_push(mscm_runtime *rt,
                        mscm_value value);
 void mscm_toggle_gc(mscm_runtime *rt, bool enable);
 void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value);
+void mscm_runtime_trace_exit(mscm_runtime *rt);
 
 #ifdef __cplusplus
 } /* extern "C" */

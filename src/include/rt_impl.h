@@ -28,6 +28,13 @@ typedef struct st_managed_value {
     mscm_value value;
 } managed_value;
 
+typedef struct st_stack_trace {
+    struct st_stack_trace *next;
+    char const *file;
+    size_t line;
+    mscm_func_def *fndef;
+} stack_trace;
+
 #define GC_POOL_BUCKET_SIZE 4096
 
 typedef struct st_mscm_runtime {
@@ -38,6 +45,8 @@ typedef struct st_mscm_runtime {
     bool gc_enabled;
     size_t alloc_count;
     managed_value *gc_pool_buckets[GC_POOL_BUCKET_SIZE];
+
+    stack_trace *trace;
 } mscm_runtime;
 
 mscm_runtime *runtime_new(void);
