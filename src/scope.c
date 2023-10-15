@@ -10,33 +10,15 @@ static uint64_t bkdr_khash(const char *str);
 mscm_scope *mscm_scope_new(mscm_scope *parent) {
     MALLOC_CHK_RET_ZEROED(mscm_scope, ret);
     ret->parent = parent;
-    ret->refcnt = 1;
+    ret->gc_mark = false;
     return ret;
 }
 
-void mscm_scope_incref(mscm_scope *scope) {
-    scope->refcnt += 1;
-}
-
-void mscm_scope_decref(mscm_scope *scope) {
-    if (scope->refcnt > 0) {
-        scope->refcnt -= 1;
-    }
-
-    if (scope->refcnt != 0) {
-        return;
-    }
-
+void mscm_scope_free(mscm_scope *scope) {
     for (size_t i = 0; i < BUCKET_COUNT; i++) {
         free_hash_chain(scope->buckets[i]);
     }
-
-    mscm_scope *parent = scope->parent;
     free(scope);
-
-    if (parent) {
-        mscm_scope_decref(parent);
-    }
 }
 
 void mscm_scope_push(mscm_scope *scope,

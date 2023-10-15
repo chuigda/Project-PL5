@@ -28,6 +28,11 @@ typedef struct st_managed_value {
     mscm_value value;
 } managed_value;
 
+typedef struct st_managed_scope {
+    struct st_managed_scope *next;
+    mscm_scope *scope;
+} managed_scope;
+
 typedef struct st_stack_trace {
     struct st_stack_trace *next;
     char const *file;
@@ -35,7 +40,8 @@ typedef struct st_stack_trace {
     mscm_func_def *fndef;
 } stack_trace;
 
-#define GC_POOL_BUCKET_SIZE 4096
+#define GC_BUDGET 4096
+#define SCOPE_GC_BUDGET 512
 
 typedef struct st_mscm_runtime {
     mscm_scope *global_scope;
@@ -44,7 +50,9 @@ typedef struct st_mscm_runtime {
 
     bool gc_enabled;
     size_t alloc_count;
-    managed_value *gc_pool_buckets[GC_POOL_BUCKET_SIZE];
+    size_t scope_alloc_count;
+    managed_value *gc_pool;
+    managed_scope *scope_pool;
 
     stack_trace *trace;
 } mscm_runtime;

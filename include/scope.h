@@ -11,8 +11,6 @@ typedef struct st_mscm_value_base *mscm_value;
 typedef struct st_mscm_scope mscm_scope;
 
 mscm_scope *mscm_scope_new(mscm_scope *parent);
-void mscm_scope_incref(mscm_scope *scope);
-void mscm_scope_decref(mscm_scope *scope);
 
 void mscm_scope_push(mscm_scope *scope,
                      const char *name,

@@ -18,10 +18,10 @@ static mscm_value runtime_get(mscm_runtime *rt,
 static void runtime_push(mscm_runtime *rt,
                          const char *name,
                          mscm_value value);
-static void runtime_push_scope(mscm_runtime *rt, mscm_scope *scope);
+static mscm_scope *runtime_push_scope(mscm_runtime *rt);
+static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_push_scope_chain(mscm_runtime *rt,
                                      mscm_scope *scope);
-static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_pop_scope_chain(mscm_runtime *rt);
 static void runtime_add_rooted_group(mscm_runtime *rt,
                                      rooted_group *group);
@@ -46,7 +46,6 @@ mscm_runtime *runtime_new() {
 
     rt->scope_chain = malloc(sizeof(scope_chain_node));
     if (!rt->scope_chain) {
-        mscm_scope_decref(rt->global_scope);
         free(rt);
         return 0;
     }
@@ -56,33 +55,38 @@ mscm_runtime *runtime_new() {
 
     rt->gc_enabled = true;
     rt->alloc_count = 0;
-    memset(rt->gc_pool_buckets, 0, sizeof(rt->gc_pool_buckets));
-
+    rt->scope_alloc_count = 0;
+    rt->gc_pool = 0;
+    rt->scope_pool = 0;
     rt->trace = 0;
     return rt;
 }
 
 void runtime_free(mscm_runtime *rt) {
-    for (size_t i = 0; i < GC_POOL_BUCKET_SIZE; i++) {
-        managed_value *iter = rt->gc_pool_buckets[i];
-        while (iter) {
-            managed_value *current = iter;
-            iter = iter->next;
-
-            mscm_free_value(current->value);
-            free(current);
-        }
-    }
-
-    scope_chain_node *iter = rt->scope_chain;
+    managed_value *iter = rt->gc_pool;
     while (iter) {
-        scope_chain_node *current = iter;
-        iter = iter->parent;
-
-        mscm_scope_decref(current->chain);
+        managed_value *current = iter;
+        iter = iter->next;
+        mscm_free_value(current->value);
         free(current);
     }
 
+    managed_scope *scope_iter = rt->scope_pool;
+    while (scope_iter) {
+        managed_scope *current = scope_iter;
+        scope_iter = scope_iter->next;
+        mscm_scope_free(current->scope);
+        free(current);
+    }
+
+    scope_chain_node *scope_chain_iter = rt->scope_chain;
+    while (iter) {
+        scope_chain_node *current = scope_chain_iter;
+        scope_chain_iter = scope_chain_iter->parent;
+        free(current);
+    }
+
+    mscm_scope_free(rt->global_scope);
     free(rt);
 }
 
@@ -205,19 +209,20 @@ void mscm_toggle_gc(mscm_runtime *rt, bool enable) {
 }
 
 void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value) {
-    if (rt->gc_enabled && rt->alloc_count >= GC_POOL_BUCKET_SIZE) {
+    if (rt->gc_enabled &&
+        (rt->alloc_count >= GC_BUDGET ||
+         rt->scope_alloc_count >= SCOPE_GC_BUDGET)) {
         runtime_gc_collect(rt);
     }
 
-    size_t bucket = (size_t)value % GC_POOL_BUCKET_SIZE;
     managed_value *item = malloc(sizeof(managed_value));
     if (!item) {
         return;
     }
 
     item->value = value;
-    item->next = rt->gc_pool_buckets[bucket];
-    rt->gc_pool_buckets[bucket] = item;
+    item->next = rt->gc_pool;
+    rt->gc_pool = item;
     rt->alloc_count += 1;
 }
 
@@ -233,7 +238,8 @@ void mscm_runtime_trace_exit(mscm_runtime *rt) {
         }
         else {
             fprintf(stderr,
-                    "\t when calling <lambda %s:%" PRIu64 "> from %s:%" PRIu64 "\n",
+                    "\t when calling <lambda %s:%" PRIu64
+                    "> from %s:%" PRIu64 "\n",
                     trace->fndef->file, (uint64_t)trace->fndef->line,
                     trace->file ? trace->file : "unknown",
                     (uint64_t)trace->line);
@@ -303,9 +309,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         if (func->scope) {
             runtime_push_scope_chain(rt, func->scope);
         }
-        mscm_scope *outer_scope = runtime_current_scope(rt);
-        mscm_scope *func_scope = mscm_scope_new(outer_scope);
-        runtime_push_scope(rt, func_scope);
+        mscm_scope *func_scope = runtime_push_scope(rt);
 
         rooted_value *arg_iter = arg_roots.values;
         mscm_ident* param_iter = fndef->param_names;
@@ -328,7 +332,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             mscm_runtime_trace_exit(rt);
         }
 
-        runtime_push_scope(rt, mscm_scope_new(func_scope));
+        runtime_push_scope(rt);
 
         stack_trace *trace = malloc(sizeof(stack_trace));
         if (trace) {
@@ -385,12 +389,16 @@ static bool node_is_ident(mscm_syntax_node node, char const *ident) {
 }
 
 static void runtime_gc_collect(mscm_runtime *rt) {
-    for (size_t i = 0; i < GC_POOL_BUCKET_SIZE; i++) {
-        managed_value *iter = rt->gc_pool_buckets[i];
-        while (iter) {
-            iter->value->gc_mark = false;
-            iter = iter->next;
-        }
+    managed_value *iter = rt->gc_pool;
+    while (iter) {
+        iter->value->gc_mark = false;
+        iter = iter->next;
+    }
+
+    managed_scope *scope_iter = rt->scope_pool;
+    while (scope_iter) {
+        scope_iter->scope->gc_mark = false;
+        scope_iter = scope_iter->next;
     }
 
     rooted_group *group_iter = rt->rooted_groups;
@@ -409,18 +417,46 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         scope_chain_iter = scope_chain_iter->parent;
     }
 
-    for (size_t i = 0; i < GC_POOL_BUCKET_SIZE; i++) {
-        managed_value *iter = rt->gc_pool_buckets[i];
-        while (iter) {
-            managed_value *current = iter;
-            iter = iter->next;
+    iter = rt->gc_pool;
+    while (iter && !iter[0].value->gc_mark) {
+        managed_value *current = iter;
+        iter = iter->next;
+        mscm_free_value(current->value);
+    }
 
-            if (!current->value->gc_mark) {
-                mscm_free_value(current->value);
-                free(current);
-            }
+    rt->gc_pool = iter;
+    while (iter && iter->next) {
+        if (!iter->next->value->gc_mark) {
+            managed_value *freed = iter->next;
+            iter->next = freed->next;
+            mscm_free_value(freed->value);
+        }
+        else {
+            iter = iter->next;
         }
     }
+
+    scope_iter = rt->scope_pool;
+    while (scope_iter && !scope_iter->scope->gc_mark) {
+        managed_scope *current = scope_iter;
+        scope_iter = scope_iter->next;
+        mscm_scope_free(current->scope);
+    }
+
+    rt->scope_pool = scope_iter;
+    while (scope_iter && scope_iter->next) {
+        if (!scope_iter->next->scope->gc_mark) {
+            managed_scope *freed = scope_iter->next;
+            scope_iter->next = freed->next;
+            mscm_scope_free(freed->scope);
+        }
+        else {
+            scope_iter = scope_iter->next;
+        }
+    }
+
+    rt->alloc_count = 0;
+    rt->scope_alloc_count = 0;
 }
 
 static void runtime_gc_mark(mscm_value value) {
@@ -450,6 +486,12 @@ static void runtime_gc_mark(mscm_value value) {
 
 static void runtime_gc_mark_scope(mscm_scope *scope) {
     while (scope) {
+        if (scope->gc_mark) {
+            scope = scope->parent;
+            continue;
+        }
+
+        scope->gc_mark = true;
         for (size_t i = 0; i < BUCKET_COUNT; i++) {
             hash_item *chain = scope->buckets[i];
             while (chain) {
@@ -477,11 +519,25 @@ static char const* mscm_value_to_string(mscm_value value) {
     }
 }
 
-static void runtime_push_scope(mscm_runtime *rt, mscm_scope *scope) {
-    assert(scope->parent == rt->scope_chain->chain);
-    assert(scope->refcnt > 0);
+static mscm_scope *runtime_push_scope(mscm_runtime *rt) {
+    mscm_scope *scope = mscm_scope_new(runtime_current_scope(rt));
     rt->scope_chain->chain = scope;
-    mscm_scope_incref(scope);
+
+    managed_scope *item = malloc(sizeof(managed_scope));
+    if (!item) {
+        return scope;
+    }
+
+    item->scope = scope;
+    item->next = rt->scope_pool;
+    rt->scope_pool = item;
+    rt->scope_alloc_count += 1;
+    return scope;
+}
+
+static void runtime_pop_scope(mscm_runtime *rt) {
+    mscm_scope *scope = rt->scope_chain->chain;
+    rt->scope_chain->chain = scope->parent;
 }
 
 static void runtime_push_scope_chain(mscm_runtime *rt, mscm_scope *scope) {
@@ -494,19 +550,11 @@ static void runtime_push_scope_chain(mscm_runtime *rt, mscm_scope *scope) {
     node->parent = rt->scope_chain;
     node->chain = scope;
     rt->scope_chain = node;
-    mscm_scope_incref(scope);
-}
-
-static void runtime_pop_scope(mscm_runtime *rt) {
-    mscm_scope *scope = rt->scope_chain->chain;
-    rt->scope_chain->chain = scope->parent;
-    mscm_scope_decref(scope);
 }
 
 static void runtime_pop_scope_chain(mscm_runtime *rt) {
     scope_chain_node *node = rt->scope_chain;
     rt->scope_chain = node->parent;
-    mscm_scope_decref(node->chain);
     free(node);
 }
 

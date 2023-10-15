@@ -115,7 +115,6 @@ mscm_value mscm_make_function(mscm_func_def *fndef, mscm_scope *scope) {
     MSCM_VALUE_COMMON_INIT(ret, MSCM_TYPE_FUNCTION);
     ret->fndef = fndef;
     ret->scope = scope;
-    mscm_scope_incref(scope);
     return (mscm_value)ret;
 }
 
@@ -158,13 +157,6 @@ void mscm_free_value(mscm_value value) {
             }
             break;
         }
-        case MSCM_TYPE_FUNCTION: {
-            mscm_function *fn = (mscm_function*)value;
-            if (fn->scope) {
-                mscm_scope_decref(fn->scope);
-            }
-            break;
-        }
     }
 
     free(value);
@@ -187,13 +179,6 @@ void mscm_free_value_deep(mscm_value value) {
             mscm_native_function *fn = (mscm_native_function*)value;
             if (fn->ctx_dtor) {
                 fn->ctx_dtor(fn->ctx);
-            }
-            break;
-        }
-        case MSCM_TYPE_FUNCTION: {
-            mscm_function *fn = (mscm_function*)value;
-            if (fn->scope) {
-                mscm_scope_decref(fn->scope);
             }
             break;
         }
