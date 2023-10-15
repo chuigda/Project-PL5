@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "parse.h"
 #include "rt.h"
@@ -7,7 +8,6 @@
 #include "scope.h"
 #include "syntax.h"
 #include "value.h"
-#include "dump.h"
 
 #ifdef _WIN32
 #   include <windows.h>

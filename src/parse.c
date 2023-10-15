@@ -518,6 +518,7 @@ static mscm_ident* parse_ident_list(tokenise_ctx *tokeniser) {
 static void unexpected_token(token t) {
     err_printf(t.file, t.line, "unexpected %s",
                tk_string(t.tk));
+    abort();
 }
 
 static char const *tk_string(uint8_t tk) {
