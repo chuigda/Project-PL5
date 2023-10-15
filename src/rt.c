@@ -81,7 +81,7 @@ void runtime_free(mscm_runtime *rt) {
     }
 
     scope_chain_node *scope_chain_iter = rt->scope_chain;
-    while (iter) {
+    while (scope_chain_iter) {
         scope_chain_node *current = scope_chain_iter;
         scope_chain_iter = scope_chain_iter->parent;
         free(current);
@@ -265,6 +265,7 @@ static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
     return rt->scope_chain->chain;
 }
 
+// TODO works for now but needs heavy refactor
 static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     mscm_value callee = runtime_eval(rt, apply->callee, true);
     if (!callee ||
@@ -276,9 +277,11 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         mscm_runtime_trace_exit(rt);
     }
 
-    rooted_group arg_roots = { 0, 0 };
-    runtime_add_rooted_group(rt, &arg_roots);
-    rooted_value *current_root = 0;
+    rooted_value rooted_callee = { 0, callee };
+    rooted_group callee_arg_root = { 0, &rooted_callee };
+    runtime_add_rooted_group(rt, &callee_arg_root);
+
+    rooted_value *current_root = callee_arg_root.values;
     mscm_syntax_node arg = apply->args;
     while (arg) {
         mscm_value arg_value = runtime_eval(rt, arg, false);
@@ -290,20 +293,13 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
 
         arg_root->value = arg_value;
         arg_root->next = 0;
-        if (current_root) {
-            current_root->next = arg_root;
-            current_root = arg_root;
-        }
-        else {
-            arg_roots.values = arg_root;
-            current_root = arg_root;
-        }
 
+        current_root->next = arg_root;
+        current_root = arg_root;
         arg = arg->next;
     }
 
     if (callee->type == MSCM_TYPE_FUNCTION) {
-        runtime_remove_rooted_group(rt, &arg_roots);
         mscm_function *func = (mscm_function*)callee;
         mscm_func_def *fndef = func->fndef;
 
@@ -312,17 +308,15 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         }
         mscm_scope *func_scope = runtime_push_scope(rt);
 
-        rooted_value *arg_iter = arg_roots.values;
+        rooted_value *arg_iter = callee_arg_root.values->next;
         mscm_ident* param_iter = fndef->param_names;
 
         while (arg_iter && param_iter) {
             mscm_scope_push(func_scope,
                             param_iter->ident,
                             arg_iter->value);
-            rooted_value *current = arg_iter;
             arg_iter = arg_iter->next;
             param_iter = (mscm_ident*)param_iter->next;
-            free(current);
         }
 
         if (arg_iter || param_iter) {
@@ -355,31 +349,42 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             runtime_pop_scope_chain(rt);
         }
 
+        runtime_remove_rooted_group(rt, &callee_arg_root);
+        rooted_value *iter = callee_arg_root.values->next;
+        while (iter) {
+            rooted_value *current = iter;
+            iter = iter->next;
+            free(current);
+        }
         return ret;
     }
     else {
         size_t narg = 0;
-        rooted_value *arg_iter = arg_roots.values;
+        rooted_value *arg_iter = callee_arg_root.values->next;
         while (arg_iter) {
             narg += 1;
             arg_iter = arg_iter->next;
         }
 
         mscm_value args[narg];
-        arg_iter = arg_roots.values;
+        arg_iter = callee_arg_root.values->next;
         for (size_t i = 0; i < narg; i++) {
             args[i] = arg_iter->value;
-            rooted_value *current = arg_iter;
             arg_iter = arg_iter->next;
-            free(current);
         }
-        runtime_remove_rooted_group(rt, &arg_roots);
-
         mscm_native_function *native = (mscm_native_function*)callee;
         mscm_value ret = native->fnptr(rt,
                                        runtime_current_scope(rt),
                                        native->ctx,
                                        narg, args);
+
+        runtime_remove_rooted_group(rt, &callee_arg_root);
+        rooted_value *iter = callee_arg_root.values->next;
+        while (iter) {
+            rooted_value *current = iter;
+            iter = iter->next;
+            free(current);
+        }
         return ret;
     }
 }
@@ -396,6 +401,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         iter = iter->next;
     }
 
+    rt->global_scope->gc_mark = false;
     managed_scope *scope_iter = rt->scope_pool;
     while (scope_iter) {
         scope_iter->scope->gc_mark = false;
@@ -548,7 +554,7 @@ static void runtime_pop_scope(mscm_runtime *rt) {
 static void runtime_push_scope_chain(mscm_runtime *rt, mscm_scope *scope) {
     scope_chain_node *node = malloc(sizeof(scope_chain_node));
     if (!node) {
-        err_print(0, 0, "out of memory");
+        err_print(__FILE__, __LINE__, "out of memory");
         mscm_runtime_trace_exit(rt);
     }
 
