@@ -12,6 +12,8 @@
 #include "syntax.h"
 #include "util.h"
 
+static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
+static mscm_scope *runtime_current_scope(mscm_runtime *rt);
 static mscm_value runtime_get(mscm_runtime *rt,
                               const char *name,
                               bool *ok);
@@ -27,8 +29,6 @@ static void runtime_add_rooted_group(mscm_runtime *rt,
                                      rooted_group *group);
 static void runtime_remove_rooted_group(mscm_runtime *rt,
                                         rooted_group *group);
-static mscm_scope *runtime_current_scope(mscm_runtime *rt);
-static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
 static bool node_is_ident(mscm_syntax_node node, char const *ident);
 static void runtime_gc_collect(mscm_runtime *rt);
 static char const* value_type_to_string(mscm_value value);
@@ -319,20 +319,6 @@ mscm_value runtime_eval(mscm_runtime *rt,
 
 /* internals */
 
-static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok) {
-    return mscm_scope_get(rt->scope_chain->chain, name, ok);
-}
-
-static void runtime_push(mscm_runtime *rt,
-                         const char *name,
-                         mscm_value value) {
-    mscm_scope_push(rt->scope_chain->chain, name, value);
-}
-
-static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
-    return rt->scope_chain->chain;
-}
-
 // TODO works for now but needs heavy refactor
 static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     mscm_value callee = runtime_eval(rt, apply->callee, true);
@@ -455,6 +441,20 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         }
         return ret;
     }
+}
+
+static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
+    return rt->scope_chain->chain;
+}
+
+static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok) {
+    return mscm_scope_get(rt->scope_chain->chain, name, ok);
+}
+
+static void runtime_push(mscm_runtime *rt,
+                         const char *name,
+                         mscm_value value) {
+    mscm_scope_push(rt->scope_chain->chain, name, value);
 }
 
 static bool node_is_ident(mscm_syntax_node node, char const *ident) {
