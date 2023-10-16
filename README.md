@@ -4,6 +4,7 @@ Yet another scheme dialect implementation.
 
 ## Language features
 
+### Core
 - [x] Function via `define`
 - [x] Variable via `define`
 - [x] First-class function via `lambda`
@@ -14,7 +15,7 @@ Yet another scheme dialect implementation.
 - [x] Quote syntax (as a syntactic sugar)
 - [x] Extension via native module
 
-## stdlib
+### Native module `stdlib`
 - [x] Builtin pair and list operations
 - [x] Imperative programming via `set!`, `set-car!` and `set-cdr!`
 - [x] Arithmetic operators
@@ -23,7 +24,15 @@ Yet another scheme dialect implementation.
 - [ ] Builtin string operations
 - [ ] Conversion between types
 
-Non-targets:
+### Planned native modules
+- [ ] File I/O
+- [ ] Vector
+
+### Miscellaneous
+- [ ] Evaluate multiple scripts
+- [ ] REPL
+
+### Non-objects:
 - `let` syntax
 - Tail-call optimisation
 - Quasi-quote, eval and apply, meta-programming
