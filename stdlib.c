@@ -39,17 +39,19 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "true", (mscm_value)g_true_v);
     mscm_runtime_gc_add(rt, (mscm_value)g_true_v);
 
-    mscm_value display_v = mscm_make_native_function(display, 0, 0);
-    mscm_value error_v = mscm_make_native_function(error, 0, 0);
-    mscm_value equals_v = mscm_make_native_function(equals, 0, 0);
-    mscm_value less_than_v = mscm_make_native_function(less_than, 0, 0);
-    mscm_value add_v = mscm_make_native_function(add, 0, 0);
-    mscm_value mul_v = mscm_make_native_function(mul, 0, 0);
-    mscm_value strcat_v = mscm_make_native_function(string_concat, 0, 0);
-    mscm_value cons_v = mscm_make_native_function(make_pair, 0, 0);
-    mscm_value car_v = mscm_make_native_function(car, 0, 0);
-    mscm_value cdr_v = mscm_make_native_function(cdr, 0, 0);
-    mscm_value list_v = mscm_make_native_function(list, 0, 0);
+    mscm_value display_v = mscm_make_native_function(display, 0, 0, 0);
+    mscm_value error_v = mscm_make_native_function(error, 0, 0, 0);
+    mscm_value equals_v = mscm_make_native_function(equals, 0, 0, 0);
+    mscm_value less_than_v =
+        mscm_make_native_function(less_than, 0, 0, 0);
+    mscm_value add_v = mscm_make_native_function(add, 0, 0, 0);
+    mscm_value mul_v = mscm_make_native_function(mul, 0, 0, 0);
+    mscm_value strcat_v =
+        mscm_make_native_function(string_concat, 0, 0, 0);
+    mscm_value cons_v = mscm_make_native_function(make_pair, 0, 0, 0);
+    mscm_value car_v = mscm_make_native_function(car, 0, 0, 0);
+    mscm_value cdr_v = mscm_make_native_function(cdr, 0, 0, 0);
+    mscm_value list_v = mscm_make_native_function(list, 0, 0, 0);
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);

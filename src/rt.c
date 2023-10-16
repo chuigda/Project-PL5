@@ -7,10 +7,10 @@
 #include "rt.h"
 #include "rt_impl.h"
 #include "scope.h"
+#include "scope_impl.h"
+#include "value.h"
 #include "syntax.h"
 #include "util.h"
-#include "value.h"
-#include "scope_impl.h"
 
 static mscm_value runtime_get(mscm_runtime *rt,
                               const char *name,
@@ -31,9 +31,127 @@ static mscm_scope *runtime_current_scope(mscm_runtime *rt);
 static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
 static bool node_is_ident(mscm_syntax_node node, char const *ident);
 static void runtime_gc_collect(mscm_runtime *rt);
-static void runtime_gc_mark(mscm_value value);
-static void runtime_gc_mark_scope(mscm_scope *scope);
 static char const* value_type_to_string(mscm_value value);
+
+/* public APIs */
+
+void mscm_runtime_push(mscm_runtime *rt,
+                       const char *name,
+                       mscm_value value) {
+    mscm_scope_push(rt->global_scope, name, value);
+}
+
+mscm_value mscm_runtime_get(mscm_runtime *rt,
+                            const char *name,
+                            bool *ok) {
+    return mscm_scope_get(rt->global_scope, name, ok);
+}
+
+void mscm_runtime_trace_exit(mscm_runtime *rt) {
+    stack_trace *trace = rt->trace;
+    while (trace) {
+        if (trace->fndef->kind == MSCM_SYN_DEFUN) {
+            fprintf(stderr,
+                    "\t when calling `%s` from %s:%" PRIu64 "\n",
+                    trace->fndef->func_name,
+                    trace->file ? trace->file : "unknown",
+                    (uint64_t)trace->line);
+        }
+        else {
+            fprintf(stderr,
+                    "\t when calling <lambda %s:%" PRIu64
+                    "> from %s:%" PRIu64 "\n",
+                    trace->fndef->file, (uint64_t)trace->fndef->line,
+                    trace->file ? trace->file : "unknown",
+                    (uint64_t)trace->line);
+        }
+
+        trace = trace->next;
+    }
+    exit(1);
+}
+
+void mscm_toggle_gc(mscm_runtime *rt, bool enable) {
+    rt->gc_enabled = enable;
+}
+
+void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value) {
+    if (rt->gc_enabled &&
+        (rt->alloc_count >= GC_BUDGET ||
+         rt->scope_alloc_count >= SCOPE_GC_BUDGET)) {
+        runtime_gc_collect(rt);
+    }
+
+    managed_value *item = malloc(sizeof(managed_value));
+    if (!item) {
+        return;
+    }
+
+    item->value = value;
+    item->next = rt->gc_pool;
+    rt->gc_pool = item;
+    rt->alloc_count += 1;
+}
+
+void mscm_gc_mark(mscm_value value) {
+    if (!value) {
+        return;
+    }
+
+    if (value->gc_mark) {
+        return;
+    }
+
+    value->gc_mark = true;
+    switch (value->type) {
+        case MSCM_TYPE_PAIR: {
+            mscm_pair *pair = (mscm_pair*)value;
+            mscm_gc_mark(pair->fst);
+            mscm_gc_mark(pair->snd);
+            break;
+        }
+        case MSCM_TYPE_FUNCTION: {
+            mscm_function *func = (mscm_function*)value;
+            mscm_gc_mark_scope(func->scope);
+            break;
+        }
+        case MSCM_TYPE_HANDLE: {
+            mscm_handle *handle = (mscm_handle*)value;
+            if (handle->marker) {
+                handle->marker(handle->ptr);
+            }
+            break;
+        }
+        case MSCM_TYPE_NATIVE: {
+            mscm_native_function *native = (mscm_native_function*)value;
+            if (native->ctx_marker) {
+                native->ctx_marker(native->ctx);
+            }
+            break;
+        }
+    }
+}
+
+void mscm_gc_mark_scope(mscm_scope *scope) {
+    while (scope) {
+        if (scope->gc_mark) {
+            scope = scope->parent;
+            continue;
+        }
+
+        scope->gc_mark = true;
+        for (size_t i = 0; i < BUCKET_COUNT; i++) {
+            hash_item *chain = scope->buckets[i];
+            while (chain) {
+                mscm_gc_mark(chain->value);
+                chain = chain->next;
+            }
+        }
+        scope = scope->parent;
+    }
+}
+
+/* private APIs */
 
 mscm_runtime *runtime_new() {
     MALLOC_CHK_RET(mscm_runtime, rt);
@@ -89,12 +207,6 @@ void runtime_free(mscm_runtime *rt) {
 
     mscm_scope_free(rt->global_scope);
     free(rt);
-}
-
-void mscm_runtime_push(mscm_runtime *rt,
-                       const char *name,
-                       mscm_value value) {
-    mscm_scope_push(rt->global_scope, name, value);
 }
 
 mscm_value runtime_eval(mscm_runtime *rt,
@@ -205,51 +317,7 @@ mscm_value runtime_eval(mscm_runtime *rt,
     return ret;
 }
 
-void mscm_toggle_gc(mscm_runtime *rt, bool enable) {
-    rt->gc_enabled = enable;
-}
-
-void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value) {
-    if (rt->gc_enabled &&
-        (rt->alloc_count >= GC_BUDGET ||
-         rt->scope_alloc_count >= SCOPE_GC_BUDGET)) {
-        runtime_gc_collect(rt);
-    }
-
-    managed_value *item = malloc(sizeof(managed_value));
-    if (!item) {
-        return;
-    }
-
-    item->value = value;
-    item->next = rt->gc_pool;
-    rt->gc_pool = item;
-    rt->alloc_count += 1;
-}
-
-void mscm_runtime_trace_exit(mscm_runtime *rt) {
-    stack_trace *trace = rt->trace;
-    while (trace) {
-        if (trace->fndef->kind == MSCM_SYN_DEFUN) {
-            fprintf(stderr,
-                    "\t when calling `%s` from %s:%" PRIu64 "\n",
-                    trace->fndef->func_name,
-                    trace->file ? trace->file : "unknown",
-                    (uint64_t)trace->line);
-        }
-        else {
-            fprintf(stderr,
-                    "\t when calling <lambda %s:%" PRIu64
-                    "> from %s:%" PRIu64 "\n",
-                    trace->fndef->file, (uint64_t)trace->fndef->line,
-                    trace->file ? trace->file : "unknown",
-                    (uint64_t)trace->line);
-        }
-
-        trace = trace->next;
-    }
-    exit(1);
-}
+/* internals */
 
 static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok) {
     return mscm_scope_get(rt->scope_chain->chain, name, ok);
@@ -412,7 +480,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
     while (group_iter) {
         rooted_value *value_iter = group_iter->values;
         while (value_iter) {
-            runtime_gc_mark(value_iter->value);
+            mscm_gc_mark(value_iter->value);
             value_iter = value_iter->next;
         }
         group_iter = group_iter->next;
@@ -420,7 +488,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
 
     scope_chain_node *scope_chain_iter = rt->scope_chain;
     while (scope_chain_iter) {
-        runtime_gc_mark_scope(scope_chain_iter->chain);
+        mscm_gc_mark_scope(scope_chain_iter->chain);
         scope_chain_iter = scope_chain_iter->parent;
     }
 
@@ -464,50 +532,6 @@ static void runtime_gc_collect(mscm_runtime *rt) {
 
     rt->alloc_count = 0;
     rt->scope_alloc_count = 0;
-}
-
-static void runtime_gc_mark(mscm_value value) {
-    if (!value) {
-        return;
-    }
-
-    if (value->gc_mark) {
-        return;
-    }
-
-    value->gc_mark = true;
-    switch (value->type) {
-        case MSCM_TYPE_PAIR: {
-            mscm_pair *pair = (mscm_pair*)value;
-            runtime_gc_mark(pair->fst);
-            runtime_gc_mark(pair->snd);
-            break;
-        }
-        case MSCM_TYPE_FUNCTION: {
-            mscm_function *func = (mscm_function*)value;
-            runtime_gc_mark_scope(func->scope);
-            break;
-        }
-    }
-}
-
-static void runtime_gc_mark_scope(mscm_scope *scope) {
-    while (scope) {
-        if (scope->gc_mark) {
-            scope = scope->parent;
-            continue;
-        }
-
-        scope->gc_mark = true;
-        for (size_t i = 0; i < BUCKET_COUNT; i++) {
-            hash_item *chain = scope->buckets[i];
-            while (chain) {
-                runtime_gc_mark(chain->value);
-                chain = chain->next;
-            }
-        }
-        scope = scope->parent;
-    }
 }
 
 static char const* value_type_to_string(mscm_value value) {

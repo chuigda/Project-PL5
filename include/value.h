@@ -64,11 +64,13 @@ typedef struct {
 } mscm_function;
 
 typedef void (*mscm_user_dtor)(void* ptr);
+typedef void (*mscm_user_marker)(void *ptr);
 
 typedef struct {
     MSCM_VALUE_COMMON
     void *ptr;
     mscm_user_dtor dtor;
+    mscm_user_marker marker;
 } mscm_handle;
 
 typedef mscm_value (*mscm_native_fnptr)(
@@ -84,6 +86,7 @@ typedef struct {
     mscm_native_fnptr fnptr;
     void *ctx;
     mscm_user_dtor ctx_dtor;
+    mscm_user_marker ctx_marker;
 } mscm_native_function;
 
 mscm_value mscm_make_int(int64_t value);
@@ -93,10 +96,13 @@ mscm_value mscm_alloc_string(size_t size);
 mscm_value mscm_make_pair(mscm_value fst, mscm_value snd);
 mscm_value mscm_make_function(mscm_func_def *fndef,
                                   mscm_scope *scope);
-mscm_value mscm_make_handle(void *ptr, mscm_user_dtor dtor);
+mscm_value mscm_make_handle(void *ptr,
+                            mscm_user_dtor dtor,
+                            mscm_user_marker marker);
 mscm_value mscm_make_native_function(mscm_native_fnptr fnptr,
                                      void *ctx,
-                                     mscm_user_dtor ctx_dtor);
+                                     mscm_user_dtor ctx_dtor,
+                                     mscm_user_marker ctx_marker);
 
 void mscm_free_value(mscm_value value);
 void mscm_free_value_deep(mscm_value value);
