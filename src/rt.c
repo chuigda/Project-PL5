@@ -14,12 +14,6 @@
 
 static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
-static mscm_value runtime_get(mscm_runtime *rt,
-                              const char *name,
-                              bool *ok);
-static void runtime_push(mscm_runtime *rt,
-                         const char *name,
-                         mscm_value value);
 static mscm_scope *runtime_push_scope(mscm_runtime *rt);
 static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_push_scope_chain(mscm_runtime *rt,
@@ -222,8 +216,9 @@ mscm_value runtime_eval(mscm_runtime *rt,
             }
             case MSCM_SYN_IDENT: {
                 mscm_ident *ident = (mscm_ident*)node;
+                mscm_scope *scope = runtime_current_scope(rt);
                 bool ok;
-                ret = runtime_get(rt, ident->ident, &ok);
+                ret = mscm_scope_get(scope, ident->ident, &ok);
                 if (!ok) {
                     err_printf(node->file, node->line,
                             "undefined variable: %s", ident->ident);
@@ -233,8 +228,17 @@ mscm_value runtime_eval(mscm_runtime *rt,
             }
             case MSCM_SYN_DEFVAR: {
                 mscm_defvar *defvar = (mscm_defvar*)node;
+                mscm_scope *scope = runtime_current_scope(rt);
+                bool defined;
+                mscm_scope_get_current(scope, defvar->var_name, &defined);
+                if (defined) {
+                    err_printf(node->file, node->line,
+                               "%s already defined in current scope",
+                               defvar->var_name);
+                    mscm_runtime_trace_exit(rt);
+                }
                 mscm_value value = runtime_eval(rt, defvar->init, true);
-                runtime_push(rt, defvar->var_name, value);
+                mscm_scope_push(scope, defvar->var_name, value);
                 ret = 0;
                 break;
             }
@@ -248,18 +252,22 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 mscm_scope *capture_scope = runtime_current_scope(rt);
                 ret = mscm_make_function(fndef, capture_scope);
                 mscm_runtime_gc_add(rt, ret);
+
                 if (node->kind == MSCM_SYN_DEFUN) {
                     bool defined;
-                    mscm_scope_get(runtime_current_scope(rt),
-                                   fndef->func_name,
-                                   &defined);
+                    mscm_scope *current_scope =
+                        runtime_current_scope(rt);
+                    mscm_scope_get_current(current_scope,
+                                           fndef->func_name,
+                                        &defined);
                     if (defined) {
                         err_printf(node->file, node->line,
                                    "%s already defined in current scope",
                                    fndef->func_name);
                         mscm_runtime_trace_exit(rt);
                     }
-                    runtime_push(rt, fndef->func_name, ret);
+                    mscm_scope_push(current_scope,
+                                    fndef->func_name, ret);
                 }
                 break;
             }
@@ -445,16 +453,6 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
 
 static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
     return rt->scope_chain->chain;
-}
-
-static mscm_value runtime_get(mscm_runtime *rt, const char *name, bool *ok) {
-    return mscm_scope_get(rt->scope_chain->chain, name, ok);
-}
-
-static void runtime_push(mscm_runtime *rt,
-                         const char *name,
-                         mscm_value value) {
-    mscm_scope_push(rt->scope_chain->chain, name, value);
 }
 
 static bool node_is_ident(mscm_syntax_node node, char const *ident) {

@@ -11,11 +11,17 @@ typedef struct st_mscm_value_base *mscm_value;
 typedef struct st_mscm_scope mscm_scope;
 
 mscm_scope *mscm_scope_new(mscm_scope *parent);
-
 void mscm_scope_push(mscm_scope *scope,
                      const char *name,
                      mscm_value value);
+void mscm_scope_set(mscm_scope *scope,
+                    const char *name,
+                    mscm_value value,
+                    bool *ok);
 mscm_value mscm_scope_get(mscm_scope *scope, const char *name, bool *ok);
+mscm_value mscm_scope_get_current(mscm_scope *scope,
+                                  const char *name,
+                                  bool *ok);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -12,3 +12,9 @@
 
 (display list2)
 (display-one-by-one list2)
+
+(set-car! list1 114)
+(set-car! (cdr list1) 514)
+(set-car! (cdr (cdr list1)) 1919)
+(set-car! (cdr (cdr (cdr list1))) 810)
+(display list1)

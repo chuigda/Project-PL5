@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "rt.h"
+#include "scope.h"
 #include "slice.h"
 #include "value.h"
 #include "dump.h"
@@ -25,11 +26,18 @@ MSCM_NATIVE_FN(equals);
 MSCM_NATIVE_FN(less_than);
 MSCM_NATIVE_FN(add);
 MSCM_NATIVE_FN(mul);
+MSCM_NATIVE_FN(sub);
+MSCM_NATIVE_FN(div);
+MSCM_NATIVE_FN(mod);
 MSCM_NATIVE_FN(string_concat);
 MSCM_NATIVE_FN(make_pair);
 MSCM_NATIVE_FN(car);
 MSCM_NATIVE_FN(cdr);
 MSCM_NATIVE_FN(list);
+
+MSCM_NATIVE_FN(set);
+MSCM_NATIVE_FN(set_car);
+MSCM_NATIVE_FN(set_cdr);
 
 static mscm_value g_true_v;
 
@@ -38,6 +46,7 @@ void mscm_load_ext(mscm_runtime *rt) {
     g_true_v->type = MSCM_TYPE_SYMBOL;
     mscm_runtime_push(rt, "true", (mscm_value)g_true_v);
     mscm_runtime_gc_add(rt, (mscm_value)g_true_v);
+    mscm_runtime_push(rt, "false", 0);
 
     mscm_value display_v = mscm_make_native_function(display, 0, 0, 0);
     mscm_value error_v = mscm_make_native_function(error, 0, 0, 0);
@@ -46,12 +55,19 @@ void mscm_load_ext(mscm_runtime *rt) {
         mscm_make_native_function(less_than, 0, 0, 0);
     mscm_value add_v = mscm_make_native_function(add, 0, 0, 0);
     mscm_value mul_v = mscm_make_native_function(mul, 0, 0, 0);
+    mscm_value sub_v = mscm_make_native_function(sub, 0, 0, 0);
+    mscm_value div_v = mscm_make_native_function(div, 0, 0, 0);
+    mscm_value mod_v = mscm_make_native_function(mod, 0, 0, 0);
     mscm_value strcat_v =
         mscm_make_native_function(string_concat, 0, 0, 0);
     mscm_value cons_v = mscm_make_native_function(make_pair, 0, 0, 0);
     mscm_value car_v = mscm_make_native_function(car, 0, 0, 0);
     mscm_value cdr_v = mscm_make_native_function(cdr, 0, 0, 0);
     mscm_value list_v = mscm_make_native_function(list, 0, 0, 0);
+
+    mscm_value set_v = mscm_make_native_function(set, 0, 0, 0);
+    mscm_value set_car_v = mscm_make_native_function(set_car, 0, 0, 0);
+    mscm_value set_cdr_v = mscm_make_native_function(set_cdr, 0, 0, 0);
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);
@@ -63,6 +79,12 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "+", (mscm_value)add_v);
     mscm_runtime_push(rt, "mul", (mscm_value)mul_v);
     mscm_runtime_push(rt, "*", (mscm_value)mul_v);
+    mscm_runtime_push(rt, "sub", (mscm_value)sub_v);
+    mscm_runtime_push(rt, "-", (mscm_value)sub_v);
+    mscm_runtime_push(rt, "div", (mscm_value)div_v);
+    mscm_runtime_push(rt, "/", (mscm_value)div_v);
+    mscm_runtime_push(rt, "mod", (mscm_value)mod_v);
+    mscm_runtime_push(rt, "%", (mscm_value)mod_v);
     mscm_runtime_push(rt, "string-append", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "string-concat", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "~", (mscm_value)strcat_v);
@@ -71,17 +93,28 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "cdr", (mscm_value)cdr_v);
     mscm_runtime_push(rt, "list", (mscm_value)list_v);
 
+    mscm_runtime_push(rt, "set!", (mscm_value)set_v);
+    mscm_runtime_push(rt, "set-car!", (mscm_value)set_car_v);
+    mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
+
     mscm_runtime_gc_add(rt, display_v);
     mscm_runtime_gc_add(rt, error_v);
     mscm_runtime_gc_add(rt, equals_v);
     mscm_runtime_gc_add(rt, less_than_v);
     mscm_runtime_gc_add(rt, add_v);
     mscm_runtime_gc_add(rt, mul_v);
+    mscm_runtime_gc_add(rt, sub_v);
+    mscm_runtime_gc_add(rt, div_v);
+    mscm_runtime_gc_add(rt, mod_v);
     mscm_runtime_gc_add(rt, strcat_v);
     mscm_runtime_gc_add(rt, cons_v);
     mscm_runtime_gc_add(rt, car_v);
     mscm_runtime_gc_add(rt, cdr_v);
     mscm_runtime_gc_add(rt, list_v);
+
+    mscm_runtime_gc_add(rt, set_v);
+    mscm_runtime_gc_add(rt, set_car_v);
+    mscm_runtime_gc_add(rt, set_cdr_v);
 }
 
 MSCM_NATIVE_FN(display) {
@@ -257,6 +290,148 @@ MSCM_NATIVE_FN(less_than) {
 MSCM_NATIVE_FN(add) { IMPL_NUMERIC_OP(+=, "add", 0); }
 MSCM_NATIVE_FN(mul) { IMPL_NUMERIC_OP(*=, "mul", 1); }
 
+MSCM_NATIVE_FN(sub) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: builtin-sub: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if ((args[0]->type != MSCM_TYPE_INT &&
+         args[0]->type != MSCM_TYPE_FLOAT) ||
+         (args[1]->type != MSCM_TYPE_INT &&
+          args[1]->type != MSCM_TYPE_FLOAT)) {
+        fprintf(stderr,
+                "error: builtin-sub: "
+                "expected 2 arguments of numeric type\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    uint8_t common_type = args[0]->type;
+    if (common_type != args[1]->type) {
+        common_type = MSCM_TYPE_FLOAT;
+    }
+
+    if (common_type == MSCM_TYPE_INT) {
+        mscm_int *a = (mscm_int*)args[0];
+        mscm_int *b = (mscm_int*)args[1];
+        mscm_value ret = mscm_make_int(a->value - b->value);
+        mscm_runtime_gc_add(rt, ret);
+        return ret;
+    }
+    else {
+        double a = args[0]->type == MSCM_TYPE_INT ?
+            (double)((mscm_int*)args[0])->value :
+            ((mscm_float*)args[0])->value;
+        a -= args[1]->type == MSCM_TYPE_INT ?
+            (double)((mscm_int*)args[1])->value :
+            ((mscm_float*)args[1])->value;
+        mscm_value ret = mscm_make_float(a);
+        mscm_runtime_gc_add(rt, ret);
+        return ret;
+    }
+}
+
+MSCM_NATIVE_FN(div) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: builtin-div: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if ((args[0]->type != MSCM_TYPE_INT &&
+         args[0]->type != MSCM_TYPE_FLOAT) ||
+         (args[1]->type != MSCM_TYPE_INT &&
+          args[1]->type != MSCM_TYPE_FLOAT)) {
+        fprintf(stderr,
+                "error: builtin-div: "
+                "expected 2 arguments of numeric type\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    uint8_t common_type = args[0]->type;
+    if (common_type != args[1]->type) {
+        common_type = MSCM_TYPE_FLOAT;
+    }
+
+    if (common_type == MSCM_TYPE_INT) {
+        mscm_int *a = (mscm_int*)args[0];
+        mscm_int *b = (mscm_int*)args[1];
+        if (b->value == 0) {
+            fprintf(stderr,
+                    "error: builtin-div: "
+                    "division by zero\n");
+            mscm_runtime_trace_exit(rt);
+        }
+
+        mscm_value ret = mscm_make_int(a->value / b->value);
+        mscm_runtime_gc_add(rt, ret);
+        return ret;
+    }
+    else {
+        double a = args[0]->type == MSCM_TYPE_INT ?
+            (double)((mscm_int*)args[0])->value :
+            ((mscm_float*)args[0])->value;
+        double b = args[1]->type == MSCM_TYPE_INT ?
+            (double)((mscm_int*)args[1])->value :
+            ((mscm_float*)args[1])->value;
+        if (b == 0) {
+            fprintf(stderr,
+                    "error: builtin-div: "
+                    "division by zero\n");
+            mscm_runtime_trace_exit(rt);
+        }
+
+        mscm_value ret = mscm_make_float(a / b);
+        mscm_runtime_gc_add(rt, ret);
+        return ret;
+    }
+}
+
+MSCM_NATIVE_FN(mod) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: builtin-mod: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (args[0]->type != MSCM_TYPE_INT ||
+        args[1]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: builtin-mod: "
+                "expected 2 arguments of int type\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_int *a = (mscm_int*)args[0];
+    mscm_int *b = (mscm_int*)args[1];
+    if (b->value == 0) {
+        fprintf(stderr,
+                "error: builtin-mod: "
+                "division by zero\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_value ret = mscm_make_int(a->value % b->value);
+    mscm_runtime_gc_add(rt, ret);
+    return ret;
+}
+
 MSCM_NATIVE_FN(string_concat) {
     (void)scope;
     (void)ctx;
@@ -365,4 +540,81 @@ MSCM_NATIVE_FN(list) {
         mscm_runtime_gc_add(rt, ret);
     }
     return ret;
+}
+
+MSCM_NATIVE_FN(set) {
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: set!: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (args[0]->type != MSCM_TYPE_SYMBOL &&
+        args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: set!: expected symbol or string value\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    bool ok;
+    mscm_scope_set(scope, s->buf, args[1], &ok);
+    if (!ok) {
+        fprintf(stderr,
+                "error: set!: symbol '%s not found\n",
+                s->buf);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    return args[1];
+}
+
+MSCM_NATIVE_FN(set_car) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: set-car!: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (args[0]->type != MSCM_TYPE_PAIR) {
+        fprintf(stderr,
+                "error: set-car!: expected pair value\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_pair *p = (mscm_pair*)args[0];
+    p->fst = args[1];
+    return args[1];
+}
+
+MSCM_NATIVE_FN(set_cdr) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: set-cdr!: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (args[0]->type != MSCM_TYPE_PAIR) {
+        fprintf(stderr,
+                "error: set-cdr!: expected pair value\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_pair *p = (mscm_pair*)args[0];
+    p->snd = args[1];
+    return args[1];
 }
