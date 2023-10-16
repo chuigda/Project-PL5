@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dump.h"
 #include "rt.h"
 #include "rt_impl.h"
 #include "scope.h"
@@ -280,14 +281,14 @@ mscm_value runtime_eval(mscm_runtime *rt,
                     if (node_is_ident(cond, "otherwise") ||
                         node_is_ident(cond, "else")) {
                         ret = runtime_eval(rt, then, false);
-                        break;
+                        goto cond_hit;
                     }
 
                     mscm_value cond_result =
                         runtime_eval(rt, cond, false);
                     if (mscm_value_is_true(cond_result)) {
                         ret = runtime_eval(rt, then, false);
-                        break;
+                        goto cond_hit;
                     }
 
                     cond = cond->next;
@@ -295,7 +296,7 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 }
 
                 ret = 0;
-                break;
+                cond_hit: break;
             }
             case MSCM_SYN_IF: {
                 mscm_if *if_node = (mscm_if*)node;
