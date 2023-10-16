@@ -2,6 +2,36 @@
 
 Yet another scheme dialect implementation.
 
+## Language features
+
+- [x] Function via `define`
+- [x] Variable via `define`
+- [x] First-class function via `lambda`
+- [x] Garbage collection
+- [x] Builtin `if`, `cond` and `begin` control flow
+- [x] Integer, float, string and symbol type
+- [x] Builtin pair and list type
+- [x] Quote syntax (as a syntactic sugar)
+- [x] Extension via native module
+
+## stdlib
+- [x] Builtin pair and list operations
+- [x] Imperative programming via `set!`, `set-car!` and `set-cdr!`
+- [x] Arithmetic operators
+- [x] Comparison operators
+- [ ] Logical operators
+- [ ] Builtin string operations
+- [ ] Conversion between types
+
+Non-targets:
+- `let` syntax
+- Tail-call optimisation
+- Quasi-quote, eval and apply, meta-programming
+- Macros
+- Continuation
+- Exception handling
+- Module system
+
 ## Building with GNU make
 
 ```bash

@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dump.h"
 #include "rt.h"
 #include "rt_impl.h"
 #include "scope.h"
