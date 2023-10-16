@@ -8,8 +8,12 @@ ifndef RANLIB
 	RANLIB = ranlib
 endif
 ifndef CFLAGS
-	CFLAGS = -Wall -Wextra -Wno-pedantic -Wno-cast-function-type -g\
-				$(EXTRA_CFLAGS)
+	CFLAGS = -Wall -Wextra \
+		-Wno-pedantic \
+		-Wno-cast-function-type \
+		-Wno-char-subscripts \
+		-g \
+		$(EXTRA_CFLAGS)
 endif
 
 ifndef WIN32
