@@ -1,6 +1,7 @@
 use std::ffi::{c_char, c_void};
 
 // slice.h
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct MSCMSlice {
@@ -21,11 +22,11 @@ pub type MSCMValue = *mut MSCMValueBase;
 pub type MSCMUserDtor = extern "C" fn(*mut c_void);
 pub type MSCMUserMarker = extern "C" fn(*mut c_void);
 pub type MSCMNativeFnPtr = extern "C" fn(
-    *mut c_void, /* mscm_runtime *rt */
-    *mut c_void, /* mscm_scope *scope */
-    *mut c_void, /* void *ctx */
-    usize, /* size_t narg */
-    *mut MSCMValue /* mscm_value *args */
+    *mut MSCMRuntime,
+    *mut MSCMScope,
+    *mut c_void,
+    usize,
+    *mut MSCMValue
 ) -> MSCMValue;
 
 extern "C" {
@@ -48,5 +49,44 @@ extern "C" {
     ) -> MSCMValue;
     pub fn mscm_free_value(value: MSCMValue);
     pub fn mscm_free_value_deep(value: MSCMValue);
-    pub fn mscm_value_is_true(value: MSCMValue) -> bool;
+    pub fn mscm_value_is_true(value: MSCMValue) -> u8;
+}
+
+// scope.h
+
+pub type MSCMScope = c_void;
+
+extern "C" {
+    pub fn mscm_scope_new(parent: *mut MSCMScope) -> *mut MSCMScope;
+    pub fn mscm_scope_push(scope: *mut MSCMScope,
+                           name: *const c_char,
+                           value: MSCMValue);
+    pub fn mscm_scope_set(scope: *mut MSCMScope,
+                          name: *const c_char,
+                          value: MSCMValue,
+                          ok: *mut u8);
+    pub fn mscm_get(scope: *mut MSCMScope,
+                    name: *const c_char,
+                    ok: *mut u8) -> MSCMValue;
+    pub fn mscm_get_current(scope: *mut MSCMScope,
+                            name: *const c_char,
+                            ok: *mut u8) -> MSCMValue;
+}
+
+// rt.h
+
+pub type MSCMRuntime = c_void;
+
+extern "C" {
+    pub fn mscm_runtime_push(rt: *mut MSCMRuntime,
+                             name: *const c_char,
+                             value: MSCMValue);
+    pub fn mscm_runtime_get(rt: *mut MSCMRuntime,
+                            name: *const c_char,
+                            ok: *mut u8) -> MSCMValue;
+    pub fn mscm_runtime_trace_exit(rt: *mut MSCMRuntime) -> !;
+    pub fn mscm_toggle_gc(rt: *mut MSCMRuntime, enable: bool);
+    pub fn mscm_runtime_gc_add(rt: *mut MSCMRuntime, value: MSCMValue);
+    pub fn mscm_gc_mark(value: MSCMValue);
+    pub fn mscm_gc_mark_scope(scope: *mut MSCMScope);
 }
