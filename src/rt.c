@@ -153,6 +153,12 @@ void mscm_gc_mark_scope(mscm_scope *scope) {
     }
 }
 
+uint32_t mscm_runtime_alloc_type_id(mscm_runtime *rt) {
+    uint32_t ret = rt->next_type_id;
+    rt->next_type_id += 1;
+    return ret;
+}
+
 /* private APIs */
 
 mscm_runtime *runtime_new() {
@@ -180,6 +186,7 @@ mscm_runtime *runtime_new() {
     rt->gc_pool = 0;
     rt->scope_pool = 0;
     rt->trace = 0;
+    rt->next_type_id = 0;
     return rt;
 }
 

@@ -11,11 +11,66 @@ pub struct MSCMSlice {
 
 // value.h
 
+#[allow(non_snake_case)]
+pub mod MSCMValueType {
+    pub const INT: u8 = 0;
+    pub const FLOAT: u8 = 1;
+    pub const STRING: u8 = 2;
+    pub const SYMBOL: u8 = 3;
+    pub const PAIR: u8 = 4;
+    pub const FUNCTION: u8 = 5;
+    pub const HANDLE: u8 = 6;
+    pub const NIL: u8 = 7;
+}
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct MSCMValueBase {
-    ty: u8,
-    gc_mark: u8
+    pub ty: u8,
+    pub gc_mark: u8
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct MSCMInt {
+    pub base: MSCMValueBase,
+    pub value: i64
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct MSCMFloat {
+    pub base: MSCMValueBase,
+    pub value: f64
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct MSCMPair {
+    pub base: MSCMValueBase,
+    pub fst: MSCMValue,
+    pub snd: MSCMValue
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct MSCMHandle {
+    pub base: MSCMValueBase,
+    pub user_tid: u32,
+    pub ptr: *mut c_void,
+    pub dtor: Option<MSCMUserDtor>,
+    pub marker: Option<MSCMUserMarker>
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct MSCMFunction {
+    pub base: MSCMValueBase,
+    pub name: *const c_char,
+    pub fnptr: MSCMNativeFnPtr,
+    pub ctx: *mut c_void,
+    pub ctx_dtor: Option<MSCMUserDtor>,
+    pub ctx_marker: Option<MSCMUserMarker>
 }
 
 pub type MSCMValue = *mut MSCMValueBase;
@@ -30,6 +85,9 @@ pub type MSCMNativeFnPtr = extern "C" fn(
 ) -> MSCMValue;
 
 extern "C" {
+    pub fn mscm_type_name(t: u8) -> *const c_char;
+    pub fn mscm_value_type_name(value: MSCMValue) -> *const c_char;
+
     pub fn mscm_make_int(value: i64) -> MSCMValue;
     pub fn mscm_make_float(value: f64) -> MSCMValue;
     pub fn mscm_make_string(value: MSCMSlice, escape: bool, quote: bool) -> MSCMValue;
@@ -37,18 +95,18 @@ extern "C" {
     // pub unsafe fn mscm_alloc_string
     pub fn mscm_make_pair(fst: MSCMValue, snd: MSCMValue) -> MSCMValue;
     pub fn mscm_make_handle(
+        user_tid: u32,
         ptr: *mut c_void,
         dtor: Option<MSCMUserDtor>,
         marker: Option<MSCMUserMarker>
     ) -> MSCMValue;
     pub fn mscm_make_native_function(
+        name: *const c_char,
         fnptr: MSCMNativeFnPtr,
         ctx: *mut c_void,
         ctx_dtor: Option<MSCMUserDtor>,
         ctx_marker: Option<MSCMUserMarker>
     ) -> MSCMValue;
-    pub fn mscm_free_value(value: MSCMValue);
-    pub fn mscm_free_value_deep(value: MSCMValue);
     pub fn mscm_value_is_true(value: MSCMValue) -> u8;
 }
 
@@ -85,8 +143,11 @@ extern "C" {
                             name: *const c_char,
                             ok: *mut u8) -> MSCMValue;
     pub fn mscm_runtime_trace_exit(rt: *mut MSCMRuntime) -> !;
-    pub fn mscm_toggle_gc(rt: *mut MSCMRuntime, enable: bool);
-    pub fn mscm_runtime_gc_add(rt: *mut MSCMRuntime, value: MSCMValue);
+
+    pub fn mscm_gc_toggle(rt: *mut MSCMRuntime, enable: bool);
+    pub fn mscm_gc_add(rt: *mut MSCMRuntime, value: MSCMValue);
     pub fn mscm_gc_mark(value: MSCMValue);
     pub fn mscm_gc_mark_scope(scope: *mut MSCMScope);
+
+    pub fn mscm_runtime_alloc_type_id(rt: *mut MSCMRuntime) -> u32;
 }

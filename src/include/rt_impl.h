@@ -56,6 +56,8 @@ typedef struct st_mscm_runtime {
     managed_scope *scope_pool;
 
     stack_trace *trace;
+
+    uint32_t next_type_id;
 } mscm_runtime;
 
 mscm_runtime *runtime_new(void);

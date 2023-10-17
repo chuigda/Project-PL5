@@ -2,6 +2,7 @@
 #define MINI_SCHEME_RT_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +24,8 @@ void mscm_gc_toggle(mscm_runtime *rt, bool enable);
 void mscm_gc_add(mscm_runtime *rt, mscm_value value);
 void mscm_gc_mark(mscm_value value);
 void mscm_gc_mark_scope(mscm_scope *scope);
+
+uint32_t mscm_runtime_alloc_type_id(mscm_runtime *rt);
 
 #ifdef __cplusplus
 } /* extern "C" */
