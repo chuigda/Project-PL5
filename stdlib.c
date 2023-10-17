@@ -559,10 +559,12 @@ MSCM_NATIVE_FN(list) {
     (void)ctx;
 
     mscm_value ret = 0;
+    mscm_gc_toggle(rt, false);
     for (size_t i = narg; i > 0; i--) {
         ret = mscm_make_pair(args[i - 1], ret);
         mscm_gc_add(rt, ret);
     }
+    mscm_gc_toggle(rt, true);
     return ret;
 }
 
