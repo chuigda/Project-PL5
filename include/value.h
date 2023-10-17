@@ -78,6 +78,7 @@ typedef mscm_value (*mscm_native_fnptr)(
 
 typedef struct {
     MSCM_VALUE_COMMON
+    char const *name;
     mscm_native_fnptr fnptr;
     void *ctx;
     mscm_user_dtor ctx_dtor;
@@ -96,7 +97,8 @@ mscm_value mscm_make_handle(uint32_t user_tid,
                             void *ptr,
                             mscm_user_dtor dtor,
                             mscm_user_marker marker);
-mscm_value mscm_make_native_function(mscm_native_fnptr fnptr,
+mscm_value mscm_make_native_function(char const *name,
+                                     mscm_native_fnptr fnptr,
                                      void *ctx,
                                      mscm_user_dtor ctx_dtor,
                                      mscm_user_marker ctx_marker);

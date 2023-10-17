@@ -48,26 +48,33 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, (mscm_value)g_true_v);
     mscm_runtime_push(rt, "false", 0);
 
-    mscm_value display_v = mscm_make_native_function(display, 0, 0, 0);
-    mscm_value error_v = mscm_make_native_function(error, 0, 0, 0);
-    mscm_value equals_v = mscm_make_native_function(equals, 0, 0, 0);
+    mscm_value display_v =
+        mscm_make_native_function("display", display, 0, 0, 0);
+    mscm_value error_v =
+        mscm_make_native_function("error", error, 0, 0, 0);
+    mscm_value equals_v =
+        mscm_make_native_function("equals", equals, 0, 0, 0);
     mscm_value less_than_v =
-        mscm_make_native_function(less_than, 0, 0, 0);
-    mscm_value add_v = mscm_make_native_function(add, 0, 0, 0);
-    mscm_value mul_v = mscm_make_native_function(mul, 0, 0, 0);
-    mscm_value sub_v = mscm_make_native_function(sub, 0, 0, 0);
-    mscm_value div_v = mscm_make_native_function(div, 0, 0, 0);
-    mscm_value mod_v = mscm_make_native_function(mod, 0, 0, 0);
+        mscm_make_native_function("less-than", less_than, 0, 0, 0);
+    mscm_value add_v = mscm_make_native_function("add", add, 0, 0, 0);
+    mscm_value mul_v = mscm_make_native_function("mul", mul, 0, 0, 0);
+    mscm_value sub_v = mscm_make_native_function("sub", sub, 0, 0, 0);
+    mscm_value div_v = mscm_make_native_function("div", div, 0, 0, 0);
+    mscm_value mod_v = mscm_make_native_function("mod", mod, 0, 0, 0);
     mscm_value strcat_v =
-        mscm_make_native_function(string_concat, 0, 0, 0);
-    mscm_value cons_v = mscm_make_native_function(make_pair, 0, 0, 0);
-    mscm_value car_v = mscm_make_native_function(car, 0, 0, 0);
-    mscm_value cdr_v = mscm_make_native_function(cdr, 0, 0, 0);
-    mscm_value list_v = mscm_make_native_function(list, 0, 0, 0);
+        mscm_make_native_function("strcat", string_concat, 0, 0, 0);
+    mscm_value cons_v =
+        mscm_make_native_function("make-pair", make_pair, 0, 0, 0);
+    mscm_value car_v = mscm_make_native_function("car", car, 0, 0, 0);
+    mscm_value cdr_v = mscm_make_native_function("cdr", cdr, 0, 0, 0);
+    mscm_value list_v = mscm_make_native_function("list", list, 0, 0, 0);
 
-    mscm_value set_v = mscm_make_native_function(set, 0, 0, 0);
-    mscm_value set_car_v = mscm_make_native_function(set_car, 0, 0, 0);
-    mscm_value set_cdr_v = mscm_make_native_function(set_cdr, 0, 0, 0);
+    mscm_value set_v =
+        mscm_make_native_function("set!", set, 0, 0, 0);
+    mscm_value set_car_v =
+        mscm_make_native_function("set-car!", set_car, 0, 0, 0);
+    mscm_value set_cdr_v =
+        mscm_make_native_function("set-cdr!", set_cdr, 0, 0, 0);
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);

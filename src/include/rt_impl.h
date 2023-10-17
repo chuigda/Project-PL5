@@ -38,6 +38,7 @@ typedef struct st_stack_trace {
     char const *file;
     size_t line;
     mscm_func_def *fndef;
+    char const *native_fn_name;
 } stack_trace;
 
 #define GC_BUDGET 4096

@@ -43,18 +43,27 @@ mscm_value mscm_runtime_get(mscm_runtime *rt,
 void mscm_runtime_trace_exit(mscm_runtime *rt) {
     stack_trace *trace = rt->trace;
     while (trace) {
-        if (trace->fndef->kind == MSCM_SYN_DEFUN) {
+        if (trace->fndef) {
+            if (trace->fndef->kind == MSCM_SYN_DEFUN) {
+                fprintf(stderr,
+                        "\twhen calling `%s` from %s:%" PRIu64 "\n",
+                        trace->fndef->func_name,
+                        trace->file ? trace->file : "unknown",
+                        (uint64_t)trace->line);
+            }
+            else {
+                fprintf(stderr,
+                        "\twhen calling <lambda %s:%" PRIu64
+                        "> from %s:%" PRIu64 "\n",
+                        trace->fndef->file, (uint64_t)trace->fndef->line,
+                        trace->file ? trace->file : "unknown",
+                        (uint64_t)trace->line);
+            }
+        } else {
             fprintf(stderr,
-                    "\t when calling `%s` from %s:%" PRIu64 "\n",
-                    trace->fndef->func_name,
-                    trace->file ? trace->file : "unknown",
-                    (uint64_t)trace->line);
-        }
-        else {
-            fprintf(stderr,
-                    "\t when calling <lambda %s:%" PRIu64
-                    "> from %s:%" PRIu64 "\n",
-                    trace->fndef->file, (uint64_t)trace->fndef->line,
+                    "\twhen calling native function `%s`"
+                    " from %s:%" PRIu64 "\n",
+                    trace->native_fn_name,
                     trace->file ? trace->file : "unknown",
                     (uint64_t)trace->line);
         }
@@ -396,6 +405,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             trace->file = apply->file;
             trace->line = apply->line;
             trace->fndef = fndef;
+            trace->native_fn_name = 0;
             rt->trace = trace;
         }
         mscm_value ret = runtime_eval(rt, fndef->body, true);
@@ -434,11 +444,23 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             arg_iter = arg_iter->next;
         }
         mscm_native_function *native = (mscm_native_function*)callee;
+        stack_trace *trace = malloc(sizeof(stack_trace));
+        if (trace) {
+            trace->next = rt->trace;
+            trace->file = apply->file;
+            trace->line = apply->line;
+            trace->fndef = 0;
+            trace->native_fn_name = native->name;
+            rt->trace = trace;
+        }
         mscm_value ret = native->fnptr(rt,
                                        runtime_current_scope(rt),
                                        native->ctx,
                                        narg, args);
-
+        if (trace) {
+            rt->trace = trace->next;
+            free(trace);
+        }
         runtime_remove_rooted_group(rt, &callee_arg_root);
         rooted_value *iter = callee_arg_root.values->next;
         while (iter) {

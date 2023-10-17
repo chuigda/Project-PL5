@@ -160,12 +160,14 @@ mscm_value mscm_make_handle(uint32_t user_tid,
     return (mscm_value)ret;
 }
 
-mscm_value mscm_make_native_function(mscm_native_fnptr fnptr,
+mscm_value mscm_make_native_function(char const *name,
+                                     mscm_native_fnptr fnptr,
                                      void *ctx,
                                      mscm_user_dtor ctx_dtor,
                                      mscm_user_marker ctx_marker) {
     MALLOC_CHK_RET(mscm_native_function, ret);
     MSCM_VALUE_COMMON_INIT(ret, MSCM_TYPE_NATIVE);
+    ret->name = name;
     ret->fnptr = fnptr;
     ret->ctx = ctx;
     ret->ctx_dtor = ctx_dtor;
