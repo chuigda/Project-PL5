@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_void};
+use std::ffi::{c_char, c_void, CStr};
 
 // slice.h
 
@@ -12,7 +12,7 @@ pub struct MSCMSlice {
 // value.h
 
 #[allow(non_snake_case)]
-pub mod MSCMValueType {
+pub mod MSCMType {
     pub const INT: u8 = 0;
     pub const FLOAT: u8 = 1;
     pub const STRING: u8 = 2;
@@ -21,6 +21,18 @@ pub mod MSCMValueType {
     pub const FUNCTION: u8 = 5;
     pub const HANDLE: u8 = 6;
     pub const NIL: u8 = 7;
+}
+
+pub unsafe fn type_string(t: u8) -> String {
+    CStr::from_ptr(mscm_type_name(t))
+        .to_string_lossy()
+        .into_owned()
+}
+
+pub unsafe fn value_type_string(value: MSCMValue) -> String {
+    CStr::from_ptr(mscm_value_type_name(value))
+        .to_string_lossy()
+        .into_owned()
 }
 
 #[repr(C)]

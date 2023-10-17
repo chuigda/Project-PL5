@@ -57,8 +57,8 @@ void mscm_value_dump(mscm_value value) {
         case MSCM_TYPE_HANDLE: {
             mscm_handle *h = (mscm_handle*)value;
             if (h->dtor) {
-                printf("<handle ptr=%p, dtor=%p>",
-                       h->ptr, (void*)h->dtor);
+                printf("<handle ptr=%p, dtor=%p, mark=%p>",
+                       h->ptr, (void*)h->dtor, (void*)h->marker);
             }
             else {
                 printf("<handle ptr=%p>", h->ptr);
@@ -67,8 +67,10 @@ void mscm_value_dump(mscm_value value) {
         }
         case MSCM_TYPE_NATIVE: {
             mscm_native_function *f = (mscm_native_function*)value;
-            printf("<native function %p, ctx=%p, ctx_dtor=%p>",
-                   (void*)f->fnptr, f->ctx, (void*)f->ctx_dtor);
+            printf("<native function %p, ctx=%p,"
+                   " ctx_dtor=%p, ctx_marker=%p>",
+                   (void*)f->fnptr, f->ctx,
+                   (void*)f->ctx_dtor, (void*)f->ctx_marker);
             break;
         }
         default:
