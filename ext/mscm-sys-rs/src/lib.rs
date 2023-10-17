@@ -38,14 +38,14 @@ extern "C" {
     pub fn mscm_make_pair(fst: MSCMValue, snd: MSCMValue) -> MSCMValue;
     pub fn mscm_make_handle(
         ptr: *mut c_void,
-        dtor: MSCMUserDtor,
-        marker: MSCMUserMarker
+        dtor: Option<MSCMUserDtor>,
+        marker: Option<MSCMUserMarker>
     ) -> MSCMValue;
     pub fn mscm_make_native_function(
         fnptr: MSCMNativeFnPtr,
         ctx: *mut c_void,
-        ctx_dtor: MSCMUserDtor,
-        ctx_marker: MSCMUserMarker
+        ctx_dtor: Option<MSCMUserDtor>,
+        ctx_marker: Option<MSCMUserMarker>
     ) -> MSCMValue;
     pub fn mscm_free_value(value: MSCMValue);
     pub fn mscm_free_value_deep(value: MSCMValue);
