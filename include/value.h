@@ -11,24 +11,39 @@
 extern "C" {
 #endif
 
+/* mscm_scope 的前向声明 */
 typedef struct st_mscm_scope mscm_scope;
+
+/* mscm_func_def 的前向声明 */
 typedef struct st_mscm_func_def mscm_func_def;
+
+/* mscm_runtime 的前向声明 */
 typedef struct st_mscm_runtime mscm_runtime;
 
+/* MiniScheme 中的类型 */
 enum {
+    /* 整数类型 */
     MSCM_TYPE_INT      = 0,
+    /* 浮点类型 */
     MSCM_TYPE_FLOAT    = 1,
+    /* 字符串类型 */
     MSCM_TYPE_STRING   = 2,
+    /* Symbol 类型 */
     MSCM_TYPE_SYMBOL   = 3,
+    /* 序对 */
     MSCM_TYPE_PAIR     = 4,
+    /* 函数类型 */
     MSCM_TYPE_FUNCTION = 5,
+    /* 句柄类型 */
     MSCM_TYPE_HANDLE   = 6,
+    /* native 函数类型 */
     MSCM_TYPE_NATIVE   = 7
 };
 
+/* 所有 mscm_value 类型共享的对象头部 */
 #define MSCM_VALUE_COMMON \
-    uint8_t type; \
-    bool gc_mark;
+    uint8_t type; \ /* 对象的类型 */
+    bool gc_mark;   /* GC 标记 */
 
 typedef struct st_mscm_value_base {
     MSCM_VALUE_COMMON
