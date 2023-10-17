@@ -4,7 +4,7 @@
 #include "parse.h"
 #include "syntax.h"
 #include "tokenise.h"
-#include "value.h"
+#include "value_impl.h"
 #include "util.h"
 
 static mscm_syntax_node parse_item(tokenise_ctx *tokeniser);

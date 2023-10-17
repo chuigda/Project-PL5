@@ -19,8 +19,8 @@ mscm_value mscm_runtime_get(mscm_runtime *rt,
                             bool *ok);
 void mscm_runtime_trace_exit(mscm_runtime *rt);
 
-void mscm_toggle_gc(mscm_runtime *rt, bool enable);
-void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value);
+void mscm_gc_toggle(mscm_runtime *rt, bool enable);
+void mscm_gc_add(mscm_runtime *rt, mscm_value value);
 void mscm_gc_mark(mscm_value value);
 void mscm_gc_mark_scope(mscm_scope *scope);
 

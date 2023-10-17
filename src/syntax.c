@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "syntax.h"
-#include "value.h"
+#include "value_impl.h"
 #include "util.h"
 
 #define MSCM_SYNTAX_NODE_COMMON_INIT(NODE, KIND, FILE, LINE) \

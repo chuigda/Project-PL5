@@ -8,7 +8,7 @@
 #include "rt_impl.h"
 #include "scope.h"
 #include "scope_impl.h"
-#include "value.h"
+#include "value_impl.h"
 #include "syntax.h"
 #include "util.h"
 
@@ -25,7 +25,6 @@ static void runtime_remove_rooted_group(mscm_runtime *rt,
                                         rooted_group *group);
 static bool node_is_ident(mscm_syntax_node node, char const *ident);
 static void runtime_gc_collect(mscm_runtime *rt);
-static char const* value_type_to_string(mscm_value value);
 
 /* public APIs */
 
@@ -65,11 +64,11 @@ void mscm_runtime_trace_exit(mscm_runtime *rt) {
     exit(1);
 }
 
-void mscm_toggle_gc(mscm_runtime *rt, bool enable) {
+void mscm_gc_toggle(mscm_runtime *rt, bool enable) {
     rt->gc_enabled = enable;
 }
 
-void mscm_runtime_gc_add(mscm_runtime *rt, mscm_value value) {
+void mscm_gc_add(mscm_runtime *rt, mscm_value value) {
     if (rt->gc_enabled &&
         (rt->alloc_count >= GC_BUDGET ||
          rt->scope_alloc_count >= SCOPE_GC_BUDGET)) {
@@ -251,7 +250,7 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 mscm_func_def *fndef = (mscm_func_def*)node;
                 mscm_scope *capture_scope = runtime_current_scope(rt);
                 ret = mscm_make_function(fndef, capture_scope);
-                mscm_runtime_gc_add(rt, ret);
+                mscm_gc_add(rt, ret);
 
                 if (node->kind == MSCM_SYN_DEFUN) {
                     bool defined;
@@ -335,7 +334,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
          callee->type != MSCM_TYPE_NATIVE)) {
         err_printf(apply->callee->file, apply->callee->line,
                    "%s is not a function",
-                   value_type_to_string(callee));
+                   mscm_value_type_name(callee));
         mscm_runtime_trace_exit(rt);
     }
 
@@ -530,26 +529,6 @@ static void runtime_gc_collect(mscm_runtime *rt) {
 
     rt->alloc_count = 0;
     rt->scope_alloc_count = 0;
-}
-
-static char const* value_type_to_string(mscm_value value) {
-    if (!value) {
-        return "<null>";
-    }
-
-    switch (value->type) {
-        case MSCM_TYPE_INT: return "<int>";
-        case MSCM_TYPE_FLOAT: return "<float>";
-        case MSCM_TYPE_STRING: return "<string>";
-        case MSCM_TYPE_SYMBOL: return "<symbol>";
-        case MSCM_TYPE_PAIR: return "<pair>";
-        case MSCM_TYPE_FUNCTION: return "<function>";
-        case MSCM_TYPE_HANDLE: return "<handle>";
-        case MSCM_TYPE_NATIVE: return "<native>";
-        default:
-            assert(false);
-            return "unknown";
-    }
 }
 
 static mscm_scope *runtime_push_scope(mscm_runtime *rt) {

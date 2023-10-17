@@ -3,8 +3,37 @@
 #include <string.h>
 
 #include "scope.h"
-#include "value.h"
+#include "value_impl.h"
 #include "util.h"
+
+char const *mscm_type_name(uint8_t t) {
+    switch (t) {
+        case MSCM_TYPE_INT:
+            return "int";
+        case MSCM_TYPE_FLOAT:
+            return "float";
+        case MSCM_TYPE_STRING:
+            return "string";
+        case MSCM_TYPE_PAIR:
+            return "pair";
+        case MSCM_TYPE_FUNCTION:
+            return "function";
+        case MSCM_TYPE_HANDLE:
+            return "handle";
+        case MSCM_TYPE_NATIVE:
+            return "native";
+        default:
+            return "unknown";
+    }
+}
+
+char const *mscm_value_type_name(mscm_value value) {
+    if (!value) {
+        return "null";
+    }
+
+    return mscm_type_name(value->type);
+}
 
 #define MSCM_VALUE_COMMON_INIT(VALUE, TYPE) \
     VALUE->type = TYPE; \
@@ -118,11 +147,13 @@ mscm_value mscm_make_function(mscm_func_def *fndef, mscm_scope *scope) {
     return (mscm_value)ret;
 }
 
-mscm_value mscm_make_handle(void *ptr,
+mscm_value mscm_make_handle(uint32_t user_tid,
+                            void *ptr,
                             mscm_user_dtor dtor,
                             mscm_user_marker marker) {
     MALLOC_CHK_RET(mscm_handle, ret);
     MSCM_VALUE_COMMON_INIT(ret, MSCM_TYPE_HANDLE);
+    ret->user_tid = user_tid;
     ret->ptr = ptr;
     ret->dtor = dtor;
     ret->marker = marker;
