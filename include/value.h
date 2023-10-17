@@ -95,7 +95,7 @@ mscm_value mscm_make_string(mscm_slice value, bool escape, bool *esc_ok);
 mscm_value mscm_alloc_string(size_t size);
 mscm_value mscm_make_pair(mscm_value fst, mscm_value snd);
 mscm_value mscm_make_function(mscm_func_def *fndef,
-                                  mscm_scope *scope);
+                              mscm_scope *scope);
 mscm_value mscm_make_handle(void *ptr,
                             mscm_user_dtor dtor,
                             mscm_user_marker marker);
