@@ -1,6 +1,12 @@
-use std::{ffi::c_void, ptr::{null_mut}};
-
-use mscm_sys::{MSCMRuntime, MSCMScope, MSCMValue, mscm_make_native_function, mscm_runtime_push, mscm_runtime_gc_add};
+use std::{ffi::c_void, ptr::null_mut};
+use mscm_sys::{
+    MSCMRuntime,
+    MSCMScope,
+    MSCMValue,
+    mscm_make_native_function,
+    mscm_runtime_push,
+    mscm_runtime_gc_add
+};
 
 #[no_mangle]
 pub unsafe extern "C" fn mscm_load_ext(rt: *mut MSCMRuntime) {
