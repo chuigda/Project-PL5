@@ -42,8 +42,8 @@ enum {
 
 /* 所有 Mini Scheme 对象类型共享的对象头部 */
 #define MSCM_VALUE_COMMON \
-    uint8_t type; \ /* 对象的类型 */
-    bool gc_mark;   /* GC 标记 */
+    uint8_t type; \
+    bool gc_mark;
 
 /* 所有 Mini Scheme 对象类型的“基类” */
 typedef struct st_mscm_value_base {
