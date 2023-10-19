@@ -54,15 +54,15 @@ pub unsafe extern "C" fn mscm_load_ext(rt: *mut MSCMRuntime) {
     mscm_runtime_push(rt, b"vector-push!\0".as_ptr() as _, vector_push_v);
     mscm_gc_add(rt, vector_push_v);
 
-    let vector_at_v = mscm_make_native_function(
-        b"vector-at\0".as_ptr() as _,
-        vector_at,
+    let vector_ref_v = mscm_make_native_function(
+        b"vector-ref\0".as_ptr() as _,
+        vector_ref,
         null_mut() as _,
         None,
         None
     );
-    mscm_runtime_push(rt, b"vector-at\0".as_ptr() as _, vector_at_v);
-    mscm_gc_add(rt, vector_at_v);
+    mscm_runtime_push(rt, b"vector-ref\0".as_ptr() as _, vector_ref_v);
+    mscm_gc_add(rt, vector_ref_v);
 
     let vector_set_v = mscm_make_native_function(
         b"vector-set!\0".as_ptr() as _,
@@ -167,7 +167,7 @@ extern "C" fn vector_push(
     }
 }
 
-extern "C" fn vector_at(
+extern "C" fn vector_ref(
     rt: *mut MSCMRuntime,
     _scope: *mut MSCMScope,
     _ctx: *mut c_void,
