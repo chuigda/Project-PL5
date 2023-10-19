@@ -70,9 +70,15 @@
     (if (= pawn-y '())
         false
         (or (and (not (= pawn-x-left '()))
-                 (= (chessboard-ref chessboard pawn-x-left pawn-y) pawn-piece))
+                 (= (chessboard-ref chessboard
+                                    (idx->alpha pawn-x-left)
+                                    (idx->alpha pawn-y))
+                    pawn-piece))
             (and (not (= pawn-x-right '()))
-                 (= (chessboard-ref chessboard pawn-x-right pawn-y) pawn-piece)))))
+                 (= (chessboard-ref chessboard
+                                    (idx->alpha pawn-x-right)
+                                    (idx->alpha pawn-y))
+                    pawn-piece)))))
 
 (define chessboard-xs '(A B C D E F G H))
 (define chessboard-ys '(1 2 3 4 5 6 7 8))

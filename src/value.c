@@ -14,6 +14,8 @@ char const *mscm_type_name(uint8_t t) {
             return "float";
         case MSCM_TYPE_STRING:
             return "string";
+        case MSCM_TYPE_SYMBOL:
+            return "symbol";
         case MSCM_TYPE_PAIR:
             return "pair";
         case MSCM_TYPE_FUNCTION:
