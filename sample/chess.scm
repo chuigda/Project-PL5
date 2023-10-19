@@ -52,13 +52,9 @@
 (define (chessboard->string chessboard)
     (define ret "")
     (define (iter-impl chessboard linear-idx)
+        (if (= (% linear-idx 8) 0)
+            (set! 'ret (~ ret "\n")))
         (cond [(= linear-idx 64) ret]
-              [(= (% linear-idx 8) 0)
-               (begin
-                 (set! 'ret (~ ret
-                               "\n"
-                               (piece->string (vector-ref chessboard linear-idx))))
-                 (iter-impl chessboard (+ linear-idx 1)))]
               [else (begin
                       (set! 'ret (~ ret
                                     (piece->string (vector-ref chessboard linear-idx))))
