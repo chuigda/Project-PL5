@@ -1,3 +1,7 @@
+(define (not x) (if x '() true))
+(define (and x y) (if x y '()))
+(define (or x y) (if x true y))
+
 (define (make-chessboard)
     (vector 'r  'n  'b  'q  'k  'b  'n  'r
             'p  'p  'p  'p  'p  'p  'p  'p
@@ -28,8 +32,37 @@
     (define linear-idx (+ (* 8 (- 8 y)) x-idx))
     (vector-set! chessboard linear-idx piece))
 
-(define (move chessboard side piece x y)
+(define (imp-move! chessboard side piece x y)
     (error "unimplemented yet"))
+
+(define (imp-oo! chessboard side)
+    (error "unimplemented yet"))
+
+(define (imp-ooo! chessboard side)
+    (error "unimplemented yet"))
+
+(define (position-attacked? chessboard side x y)
+    (error "unimplemented yet"))
+
+(define (pawn-attacked? chessboard side x y)
+    ; picking the counter side pawns
+    (define pawn-piece (if (= side 'w) 'P 'p))
+    ; pawns can only attack forward
+    (define pawn-y (if (= side 'w) (+ y 1) (- y 1)))
+    (set! 'pawn-y
+        (cond [(= pawn-y 0) '()]
+              [(= pawn-y 9) '()]
+              [else pawn-y]))
+    ; pawns can only attack diagonally
+    (define pawn-x-left (if (= x 'A) '() (- (alpha->idx x) 1)))
+    (define pawn-x-right (if (= x 'H) '() (+ (alpha->idx x) 1)))
+
+    (if (= pawn-y '())
+        false
+        (or (and (not (= pawn-x-left '()))
+                 (= (chessboard-ref chessboard pawn-x-left pawn-y) pawn-piece))
+            (and (not (= pawn-x-right '()))
+                 (= (chessboard-ref chessboard pawn-x-right pawn-y) pawn-piece)))))
 
 (define chessboard-xs '(A B C D E F G H))
 (define chessboard-ys '(1 2 3 4 5 6 7 8))
@@ -61,4 +94,6 @@
                       (iter-impl chessboard (+ linear-idx 1)))]))
     (iter-impl chessboard 0))
 
-(display (chessboard->string (make-chessboard)))
+(define drill-testboard (make-chessboard))
+(display (chessboard->string drill-testboard))
+(display (pawn-attacked? drill-testboard 'b 'A 3))
