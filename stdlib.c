@@ -327,7 +327,7 @@ MSCM_NATIVE_FN(sub) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg[0] || !arg[1] ||
+    if (!args[0] || !args[1] ||
         (args[0]->type != MSCM_TYPE_INT &&
          args[0]->type != MSCM_TYPE_FLOAT) ||
          (args[1]->type != MSCM_TYPE_INT &&
@@ -377,7 +377,7 @@ MSCM_NATIVE_FN(div) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg[0] || !arg[1] ||
+    if (!args[0] || !args[1] ||
         (args[0]->type != MSCM_TYPE_INT &&
          args[0]->type != MSCM_TYPE_FLOAT) ||
          (args[1]->type != MSCM_TYPE_INT &&
@@ -441,7 +441,7 @@ MSCM_NATIVE_FN(mod) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg[0] || !arg[1] ||
+    if (!args[0] || !args[1] ||
         args[0]->type != MSCM_TYPE_INT ||
         args[1]->type != MSCM_TYPE_INT) {
         fprintf(stderr,
@@ -480,7 +480,7 @@ MSCM_NATIVE_FN(string_concat) {
 
     size_t len = 0;
     for (size_t i = 0; i < narg; i++) {
-        if (!arg[i] || args[i]->type != MSCM_TYPE_STRING) {
+        if (!args[i] || args[i]->type != MSCM_TYPE_STRING) {
             fprintf(stderr,
                     "error: string-concat: %" PRIu64
                     "th arg: expected string value, got %s\n",
@@ -533,7 +533,7 @@ MSCM_NATIVE_FN(car) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg[0] || args[0]->type != MSCM_TYPE_PAIR) {
+    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
         fprintf(stderr,
                 "error: car: expected pair value, got %s\n",
                 mscm_value_type_name(args[0]));
@@ -556,7 +556,7 @@ MSCM_NATIVE_FN(cdr) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg[0] || args[0]->type != MSCM_TYPE_PAIR) {
+    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
         fprintf(stderr,
                 "error: car: expected pair value, got %s\n",
                 mscm_value_type_name(args[0]));
@@ -592,7 +592,7 @@ MSCM_NATIVE_FN(set) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg0 ||
+    if (!args[0] ||
         (args[0]->type != MSCM_TYPE_SYMBOL &&
          args[0]->type != MSCM_TYPE_STRING)) {
         fprintf(stderr,
@@ -627,7 +627,7 @@ MSCM_NATIVE_FN(set_car) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg0 || args[0]->type != MSCM_TYPE_PAIR) {
+    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
         fprintf(stderr,
                 "error: set-car!: expected pair value, got %s\n",
                 mscm_value_type_name(args[0]));
@@ -651,7 +651,7 @@ MSCM_NATIVE_FN(set_cdr) {
         mscm_runtime_trace_exit(rt);
     }
 
-    if (!arg0 || args[0]->type != MSCM_TYPE_PAIR) {
+    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
         fprintf(stderr,
                 "error: set-cdr!: expected pair value, got %s\n",
                 mscm_value_type_name(args[0]));

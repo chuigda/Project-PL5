@@ -20,8 +20,17 @@
           [(= char 'E) 4]
           [(= char 'F) 5]
           [(= char 'G) 6]
-          [(= char 'H) 7]
-          [otherwise (error "unknown X coordinate")]))
+          [(= char 'H) 7]))
+
+(define (idx->alpha idx)
+    (cond [(= idx 0) 'A]
+          [(= idx 1) 'B]
+          [(= idx 2) 'C]
+          [(= idx 3) 'D]
+          [(= idx 4) 'E]
+          [(= idx 5) 'F]
+          [(= idx 6) 'G]
+          [(= idx 7) 'H]))
 
 (define (chessboard-ref chessboard x y)
     (define x-idx (alpha->idx x))
