@@ -270,13 +270,23 @@ MSCM_NATIVE_FN(less_than) {
     (void)ctx; \
     \
     if (narg == 0) { \
-        return mscm_make_int(0); \
+        mscm_value ret = mscm_make_int(0); \
+        mscm_gc_add(rt, ret); \
+        return ret; \
     } \
     \
     bool use_float = false; \
     int64_t acc = INIT; \
     double facc = INIT; \
     for (size_t i = 0; i < narg; i++) { \
+        if (!args[i]) { \
+            fprintf(stderr, \
+                    "error: builtin-" OPNAME ": %" PRIu64 \
+                    "th arg: expected int or float value, got %s\n", \
+                    (uint64_t)i,\
+                    mscm_value_type_name(args[i])); \
+            mscm_runtime_trace_exit(rt); \
+        } \
         if (use_float || args[i]->type == MSCM_TYPE_FLOAT) { \
             use_float = true; \
             facc OP ((mscm_float*)args[i])->value; \
