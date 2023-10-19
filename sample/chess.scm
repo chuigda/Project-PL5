@@ -20,7 +20,8 @@
           [(= char 'E) 4]
           [(= char 'F) 5]
           [(= char 'G) 6]
-          [(= char 'H) 7]))
+          [(= char 'H) 7]
+          [otherwise (error "unknown X coordinate")]))
 
 (define (chessboard-ref chessboard x y)
     (define x-idx (alpha->idx x))
@@ -80,7 +81,8 @@
           [(= piece 'Q) "♕ "]
           [(= piece 'K) "♔ "]
           [(= piece 'P) "♙ "]
-          [(= piece '()) "  "]))
+          [(= piece '()) "  "]
+          [otherwise (error "unknown piece")]))
 
 (define (chessboard->string chessboard)
     (define ret "")
