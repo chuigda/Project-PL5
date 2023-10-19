@@ -1,6 +1,8 @@
 (define (and x y) (if x y false))
 (define (or x y) (if x true y))
 
+(define (id x) x)
+
 (define (make-chessboard)
     (vector 'r  'n  'b  'q  'k  'b  'n  'r
             'p  'p  'p  'p  'p  'p  'p  'p
@@ -41,6 +43,14 @@
           [(= char 'G) 'H]
           [(= char 'H) '()]))
 
+(define (delimited+ idx) (if (= idx 8) '() (+ idx 1)))
+(define (delimited- idx) (if (= idx 1) '() (- idx 1)))
+
+(define (alpha+2 x) (alpha+ (alpha+ x)))
+(define (alpha-2 x) (alpha- (alpha- x)))
+(define (delimited+2 x) (delimited+ (delimited+ x)))
+(define (delimited-2 x) (delimited- (delimited- x)))
+
 (define (idx->alpha idx)
     (cond [(= idx 0) 'A]
           [(= idx 1) 'B]
@@ -73,28 +83,47 @@
 (define (position-attacked? chessboard side x y)
     (error "unimplemented yet"))
 
+(define (has-attacker-at-position-list? chessboard x y positions attacker)
+    (if (= positions '())
+        false
+        (if (has-attacker-at-position? chessboard x y (car positions) attacker)
+            true
+            (has-attacker-at-position-list? chessboard x y (cdr positions) attacker))))
+
+(define (has-attacker-at-position? chessboard x y position attacker)
+    (if (or (= (car position) '())
+               (= (cdr position) '()))
+        false
+        (= (chessboard-ref chessboard (car position) (cdr position)) attacker))) 
+
 (define (pawn-attack? chessboard side x y)
     (define pawn-piece (if (= side 'w) 'P 'p))
-    (define pawn-y (if (= side 'w) (- y 1) (+ y 1)))
-    (cond [(= pawn-y 0) (set! 'pawn-y '())]
-          [(= pawn-y 9) (set! 'pawn-y '())])
+    (define pawn-y (if (= side 'w) (delimited- y) (delimited+ y)))
     (define pawn-x-left (alpha- x))
     (define pawn-x-right (alpha+ x))
+    (has-attacker-at-position-list? chessboard
+                                    x
+                                    y
+                                    (list (cons pawn-x-left pawn-y)
+                                          (cons pawn-x-right pawn-y))
+                                    pawn-piece))
 
-    (if (= pawn-y '())
-        false
-        (or (if (= pawn-x-left '())
-                false
-                (= (chessboard-ref chessboard
-                                   pawn-x-left
-                                   pawn-y)
-                   pawn-piece))
-            (if (= pawn-x-right '())
-                false
-                (= (chessboard-ref chessboard
-                                   pawn-x-right
-                                   pawn-y)
-                   pawn-piece)))))
+(define (has-attacker? chessboard x y dx dy attacker)
+    (cond [(= x '()) false]
+          [(= y '()) false]
+          [else (begin
+              (define this-piece (chessboard-ref chessboard x y))
+              (cond [(= this-piece attacker) true]
+                    [(= this-piece '())
+                     (has-attacker? chessboard (dx x) (dy y) dx dy attacker)]
+                    [else false]))]))
+
+(define (rook-attack? chessboard side x y)
+    (define rook-piece (if (= side 'w) 'R 'r))
+    (or (or (has-attacker? chessboard x y alpha- id rook-piece)
+            (has-attacker? chessboard x y alpha+ id rook-piece))
+        (or (has-attacker? chessboard x y id delimited- rook-piece)
+            (has-attacker? chessboard x y id delimited+ rook-piece))))
 
 (define chessboard-xs '(A B C D E F G H))
 (define chessboard-ys '(1 2 3 4 5 6 7 8))
@@ -128,5 +157,15 @@
     (iter-impl chessboard 0))
 
 (define drill-testboard (make-chessboard))
+(chessboard-set! drill-testboard 'A 2 '())
 (display (chessboard->string drill-testboard))
-(display (pawn-attack? drill-testboard 'w 'A 3))
+(display "Is there a white pawn attacking A2?"
+         (pawn-attack? drill-testboard 'w 'A 2))
+(display "Is there a white pawn attacking A3?"
+         (pawn-attack? drill-testboard 'w 'A 3))
+(display "Is there a white pawn attacking A4?"
+         (pawn-attack? drill-testboard 'w 'A 4))
+(display "Is there a white rook attacking A3?"
+         (rook-attack? drill-testboard 'w 'A 3))
+(display "Is there a black rook attacking H3?"
+         (rook-attack? drill-testboard 'b 'H 3))
