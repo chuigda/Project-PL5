@@ -1,5 +1,4 @@
-(define (not x) (if x '() true))
-(define (and x y) (if x y '()))
+(define (and x y) (if x y false))
 (define (or x y) (if x true y))
 
 (define (make-chessboard)
@@ -21,6 +20,26 @@
           [(= char 'F) 5]
           [(= char 'G) 6]
           [(= char 'H) 7]))
+
+(define (alpha- char)
+    (cond [(= char 'A) '()]
+          [(= char 'B) 'A]
+          [(= char 'C) 'B]
+          [(= char 'D) 'C]
+          [(= char 'E) 'D]
+          [(= char 'F) 'E]
+          [(= char 'G) 'F]
+          [(= char 'H) 'G]))
+
+(define (alpha+ char)
+    (cond [(= char 'A) 'B]
+          [(= char 'B) 'C]
+          [(= char 'C) 'D]
+          [(= char 'D) 'E]
+          [(= char 'E) 'F]
+          [(= char 'F) 'G]
+          [(= char 'G) 'H]
+          [(= char 'H) '()]))
 
 (define (idx->alpha idx)
     (cond [(= idx 0) 'A]
@@ -54,31 +73,26 @@
 (define (position-attacked? chessboard side x y)
     (error "unimplemented yet"))
 
-(define (pawn-attacked? chessboard side x y)
-    ; picking the counter side pawns
+(define (pawn-attack? chessboard side x y)
     (define pawn-piece (if (= side 'w) 'P 'p))
-    ; pawns can only attack forward
-    (define pawn-y (if (= side 'w) (+ y 1) (- y 1)))
-    (set! 'pawn-y
-        (cond [(= pawn-y 0) '()]
-              [(= pawn-y 9) '()]
-              [else pawn-y]))
-    ; pawns can only attack diagonally
-    (define pawn-x-left (if (= x 'A) '() (- (alpha->idx x) 1)))
-    (define pawn-x-right (if (= x 'H) '() (+ (alpha->idx x) 1)))
+    (define pawn-y (if (= side 'w) (- y 1) (+ y 1)))
+    (cond [(= pawn-y 0) (set! 'pawn-y '())]
+          [(= pawn-y 9) (set! 'pawn-y '())])
+    (define pawn-x-left (alpha- x))
+    (define pawn-x-right (alpha+ x))
 
     (if (= pawn-y '())
         false
         (or (if (= pawn-x-left '())
                 false
                 (= (chessboard-ref chessboard
-                                   (idx->alpha (- pawn-x-left 1))
+                                   pawn-x-left
                                    pawn-y)
                    pawn-piece))
             (if (= pawn-x-right '())
                 false
                 (= (chessboard-ref chessboard
-                                   (idx->alpha (- pawn-x-right 1))
+                                   pawn-x-right
                                    pawn-y)
                    pawn-piece)))))
 
@@ -115,4 +129,4 @@
 
 (define drill-testboard (make-chessboard))
 (display (chessboard->string drill-testboard))
-(display (pawn-attacked? drill-testboard 'b 'A 3))
+(display (pawn-attack? drill-testboard 'w 'A 3))
