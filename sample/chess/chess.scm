@@ -7,95 +7,20 @@
 (define (imp-ooo! chessboard side)
     (error "unimplemented yet"))
 
-(define (position-attacked? chessboard side x y)
-    (error "unimplemented yet"))
 
-(define (has-attacker-at-position-list? chessboard x y positions attacker)
-    (if (= positions '())
-        false
-        (if (has-attacker-at-position? chessboard x y (car positions) attacker)
-            true
-            (has-attacker-at-position-list? chessboard x y (cdr positions) attacker))))
+(define drill-testboard (make-chessboard))
 
-(define (has-attacker-at-position? chessboard x y position attacker)
-    (if (or (= (car position) '())
-               (= (cdr position) '()))
-        false
-        (= (chessboard-ref chessboard (car position) (cdr position)) attacker))) 
+(chessboard-set! drill-testboard 'A 2 '())
 
-(define (pawn-attack? chessboard side x y)
-    (define pawn-piece (if (= side 'w) 'P 'p))
-    (define pawn-y (if (= side 'w) (delimited- y) (delimited+ y)))
-    (define pawn-x-left (alpha- x))
-    (define pawn-x-right (alpha+ x))
-    (has-attacker-at-position-list? chessboard
-                                    x
-                                    y
-                                    (list (cons pawn-x-left pawn-y)
-                                          (cons pawn-x-right pawn-y))
-                                    pawn-piece))
+(display (chessboard->string drill-testboard))
 
-(define (has-attacker? chessboard x y dx dy attacker)
-    (cond [(= x '()) false]
-          [(= y '()) false]
-          [else (begin
-              (define this-piece (chessboard-ref chessboard x y))
-              (cond [(= this-piece attacker) true]
-                    [(= this-piece '())
-                     (has-attacker? chessboard (dx x) (dy y) dx dy attacker)]
-                    [else false]))]))
-
-(define (rook-attack? chessboard side x y)
-    (define rook-piece (if (= side 'w) 'R 'r))
-    (or (or (has-attacker? chessboard x y alpha- id rook-piece)
-            (has-attacker? chessboard x y alpha+ id rook-piece))
-        (or (has-attacker? chessboard x y id delimited- rook-piece)
-            (has-attacker? chessboard x y id delimited+ rook-piece))))
-
-(define chessboard-xs '(A B C D E F G H))
-(define chessboard-ys '(1 2 3 4 5 6 7 8))
-
-(define (piece->string piece)
-    (cond [(= piece 'r) "♜ "]
-          [(= piece 'n) "♞ "]
-          [(= piece 'b) "♝ "]
-          [(= piece 'q) "♛ "]
-          [(= piece 'k) "♚ "]
-          [(= piece 'p) "♟ "]
-          [(= piece 'R) "♖ "]
-          [(= piece 'N) "♘ "]
-          [(= piece 'B) "♗ "]
-          [(= piece 'Q) "♕ "]
-          [(= piece 'K) "♔ "]
-          [(= piece 'P) "♙ "]
-          [(= piece '()) "  "]
-          [otherwise (error "unknown piece")]))
-
-(define (chessboard->string chessboard)
-    (define ret "")
-    (define (iter-impl chessboard linear-idx)
-        (if (= (% linear-idx 8) 0)
-            (set! 'ret (~ ret "\n")))
-        (cond [(= linear-idx 64) ret]
-              [else (begin
-                      (set! 'ret (~ ret
-                                    (piece->string (vector-ref chessboard linear-idx))))
-                      (iter-impl chessboard (+ linear-idx 1)))]))
-    (iter-impl chessboard 0))
-
-(define (application-start)
-    (define drill-testboard (make-chessboard))
-    (chessboard-set! drill-testboard 'A 2 '())
-    (display (chessboard->string drill-testboard))
-    (display "Is there a white pawn attacking A2?"
-            (pawn-attack? drill-testboard 'w 'A 2))
-    (display "Is there a white pawn attacking A3?"
-            (pawn-attack? drill-testboard 'w 'A 3))
-    (display "Is there a white pawn attacking A4?"
-            (pawn-attack? drill-testboard 'w 'A 4))
-    (display "Is there a white rook attacking A3?"
-            (rook-attack? drill-testboard 'w 'A 3))
-    (display "Is there a black rook attacking H3?"
-            (rook-attack? drill-testboard 'b 'H 3)))
-
-(application-start)
+(display "Is there a white pawn attacking A2?"
+         (pawn-attack? drill-testboard 'w 'A 2))
+(display "Is there a white pawn attacking A3?"
+         (pawn-attack? drill-testboard 'w 'A 3))
+(display "Is there a white pawn attacking A4?"
+         (pawn-attack? drill-testboard 'w 'A 4))
+(display "Is there a white rook attacking A3?"
+         (rook-attack? drill-testboard 'w 'A 3))
+(display "Is there a black rook attacking H3?"
+         (rook-attack? drill-testboard 'b 'H 3))

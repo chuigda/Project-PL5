@@ -8,6 +8,9 @@
             'P  'P  'P  'P  'P  'P  'P  'P
             'R  'N  'B  'Q  'K  'B  'N  'R))
 
+(define chessboard-xs '(A B C D E F G H))
+(define chessboard-ys '(1 2 3 4 5 6 7 8))
+
 (define (alpha->idx char)
     (cond [(= char 'A) 0]
           [(= char 'B) 1]
@@ -26,7 +29,12 @@
           [(= char 'E) 'D]
           [(= char 'F) 'E]
           [(= char 'G) 'F]
-          [(= char 'H) 'G]))
+          [(= char 'H) 'G]
+          ; since alpha-2 is just alpha- composed with itself, if
+          ; (alpha- char) is '(), then (alpha-2 char) should also be '()
+          ; and that makes sense
+          [(= char '()) '()]
+          [else (error "unknown char index")]))
 
 (define (alpha+ char)
     (cond [(= char 'A) 'B]
@@ -36,10 +44,19 @@
           [(= char 'E) 'F]
           [(= char 'F) 'G]
           [(= char 'G) 'H]
-          [(= char 'H) '()]))
+          [(= char 'H) '()]
+          [(= char '()) '()] ; ditto
+          [else (error "unknown char index")]))
 
-(define (delimited+ idx) (if (= idx 8) '() (+ idx 1)))
-(define (delimited- idx) (if (= idx 1) '() (- idx 1)))
+(define (delimited+ idx)
+    (cond [(= idx '()) '()]
+          [(= idx 8) '()]
+          [else (+ idx 1)]))
+
+(define (delimited- idx)
+    (cond [(= idx '()) '()]
+          [(= idx 1) '()]
+          [else (- idx 1)]))
 
 (define (alpha+2 x) (alpha+ (alpha+ x)))
 (define (alpha-2 x) (alpha- (alpha- x)))
@@ -55,3 +72,31 @@
     (define x-idx (alpha->idx x))
     (define linear-idx (+ (* 8 (- 8 y)) x-idx))
     (vector-set! chessboard linear-idx piece))
+
+(define (piece->string piece)
+    (cond [(= piece 'r) "♜ "]
+          [(= piece 'n) "♞ "]
+          [(= piece 'b) "♝ "]
+          [(= piece 'q) "♛ "]
+          [(= piece 'k) "♚ "]
+          [(= piece 'p) "♟ "]
+          [(= piece 'R) "♖ "]
+          [(= piece 'N) "♘ "]
+          [(= piece 'B) "♗ "]
+          [(= piece 'Q) "♕ "]
+          [(= piece 'K) "♔ "]
+          [(= piece 'P) "♙ "]
+          [(= piece '()) "  "]
+          [otherwise (error "unknown piece")]))
+
+(define (chessboard->string chessboard)
+    (define ret "")
+    (define (iter-impl chessboard linear-idx)
+        (if (= (% linear-idx 8) 0)
+            (set! 'ret (~ ret "\n")))
+        (cond [(= linear-idx 64) ret]
+              [else (begin
+                      (set! 'ret (~ ret
+                                    (piece->string (vector-ref chessboard linear-idx))))
+                      (iter-impl chessboard (+ linear-idx 1)))]))
+    (iter-impl chessboard 0))
