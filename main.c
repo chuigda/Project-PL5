@@ -16,6 +16,7 @@
 #   include <unistd.h>
 #endif /* _WIN32 */
 
+static mscm_syntax_node find_last(mscm_syntax_node node);
 static char* read_to_string(char const *file);
 static bool ends_with(char const *str, char const *suffix);
 
@@ -27,6 +28,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    mscm_syntax_node saved_node = 0;
+    mscm_syntax_node last_node = 0;
     mscm_runtime *rt = runtime_new();
     for (int i = 1; i < argc; ++i) {
         if (ends_with(argv[i], ".dll") || ends_with(argv[i], ".so")) {
@@ -86,15 +89,30 @@ int main(int argc, char **argv) {
                 free(content);
                 continue;
             }
+            free(content);
 
             runtime_eval(rt, node, true);
-            mscm_free_syntax_node(node);
-            free(content);
+            if (saved_node) {
+                last_node->next = node;
+                last_node = find_last(node);
+            }
+            else {
+                saved_node = node;
+                last_node = find_last(node);
+            }
         }
     }
     runtime_free(rt);
+    mscm_free_syntax_node(saved_node);
 
     return 0;
+}
+
+static mscm_syntax_node find_last(mscm_syntax_node node) {
+    while (node->next) {
+        node = node->next;
+    }
+    return node;
 }
 
 static char* read_to_string(char const *file) {
