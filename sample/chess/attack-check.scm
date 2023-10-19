@@ -1,6 +1,11 @@
 ; return true if the coordinate is attacked by a piece of the given side
 (define (position-attacked? chessboard side x y)
-    (error "unimplemented yet"))
+    (or-list (list (pawn-attack? chessboard side x y)
+                   (king-attack? chessboard side x y)
+                   (knight-attack? chessboard side x y)
+                   (rook-attack? chessboard side x y)
+                   (bishop-attack? chessboard side x y)
+                   (queen-attack? chessboard side x y))))
 
 ; return true if attacker piece is found at any of the given positions
 (define (has-attacker-at-position-list? chessboard x y positions attacker)
