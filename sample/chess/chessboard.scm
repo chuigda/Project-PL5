@@ -11,6 +11,19 @@
 (define chessboard-xs '(A B C D E F G H))
 (define chessboard-ys '(1 2 3 4 5 6 7 8))
 
+(define white-pieces '(R N B Q K P))
+(define black-pieces '(r n b q k p))
+
+(define (side-pieces side)
+    (cond [(= side 'w) white-pieces]
+          [(= side 'b) black-pieces]
+          [else (error "unknown side")]))
+
+(define (opponent-side side)
+    (cond [(= side 'w) 'b]
+          [(= side 'b) 'w]
+          [else (error "unknown side")]))
+
 (define (alpha->idx char)
     (cond [(= char 'A) 0]
           [(= char 'B) 1]

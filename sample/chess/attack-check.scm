@@ -20,7 +20,7 @@
     (if (or (= (car position) '())
                (= (cdr position) '()))
         false
-        (= (chessboard-ref chessboard (car position) (cdr position)) attacker))) 
+        (= (chessboard-ref chessboard (car position) (cdr position)) attacker)))
 
 ; return true if attacker piece is found at (apply-n dx x) (apply-n dy y)
 (define (has-attacker? chessboard x y dx dy attacker)
