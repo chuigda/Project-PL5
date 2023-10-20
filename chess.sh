@@ -6,4 +6,5 @@
   sample/chess/stdsup.scm \
   sample/chess/chessboard.scm \
   sample/chess/attack-check.scm \
+  sample/chess/move-check.scm \
   sample/chess/chess.scm
