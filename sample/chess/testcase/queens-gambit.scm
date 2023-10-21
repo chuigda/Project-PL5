@@ -7,6 +7,7 @@
 ; black move from D7 to D5
 (imp-move! c 'b 'D 7 'D 5)
 
+(display "d4 - d5")
 (display (chessboard->string c))
 
 ; white move from C2 to C4 (queen's gambit)
@@ -15,6 +16,7 @@
 ; black move from E7 to E5
 (imp-move! c 'b 'E 7 'E 5)
 
+(display "c4 - e5")
 (display (chessboard->string c))
 
 ; white capture black pawn at E5
@@ -23,6 +25,7 @@
 ; then black could push pawn to D4
 (imp-move! c 'b 'D 5 'D 4)
 
+(display "Pxe5 - d4")
 (display (chessboard->string c))
 
 ; white don't want black to push pawn at D lane, using E pawn to defend
@@ -31,6 +34,7 @@
 ; then, black could attack white king with bishop
 (imp-move! c 'b 'F 8 'B 4)
 
+(display "e3 - b4")
 (display (chessboard->string c))
 
 ; white block with bishop
@@ -39,6 +43,7 @@
 ; black pawn capture E3
 (imp-move! c 'b 'D 4 'E 3)
 
+(display "Bd2 - Pxe3")
 (display (chessboard->string c))
 
 ; white capture black bishop at B4
@@ -47,6 +52,7 @@
 ; black pawn capture F2 and check white king
 (imp-move! c 'b 'E 3 'F 2)
 
+(display "Bxb4 - Pxf2")
 (display (chessboard->string c))
 
 ; white have no option but move king to E2
@@ -56,6 +62,7 @@
 (imp-move! c 'b 'F 2 'G 1)
 (upgrade-pawn! c 'G 1 'n)
 
+(display "Ke2 - Pxg1")
 (display (chessboard->string c))
 
 ; if white capture black knight at G1 with rook at H1, then black
@@ -67,6 +74,7 @@
 ; black queen move to H4 to check
 (imp-move! c 'b 'D 8 'H 4)
 
+(display "Ke1 - Qh4")
 (display (chessboard->string c))
  
 ; white cannot attack black queen with G2-G3 because thus
@@ -78,6 +86,7 @@
 ; black knight to C6
 (imp-move! c 'b 'B 8 'C 6)
 
+(display "Kd2 - Nc6")
 (display (chessboard->string c))
 
 ; white bishop to C3
@@ -86,11 +95,13 @@
 ; black bishop to G4
 (imp-move! c 'b 'C 8 'G 4)
 
+(display "Bc3 - Bg4")
 (display (chessboard->string c))
 
 ; white queen to E1
 (imp-move! c 'w 'D 1 'E 1)
 
+(display "Qe1")
 (display (chessboard->string c))
 
 ; TODO implement castling
