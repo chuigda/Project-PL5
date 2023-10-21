@@ -1,6 +1,6 @@
 (define c (make-chessboard))
 
-; 后翼弃兵与阿尔宾反弃兵
+; Queen's Gambit and Albin Countergambit
 
 ; white move from D2 to D4
 (imp-move! c 'w 'D 2 'D 4)
@@ -76,7 +76,7 @@
 
 (display "Ke1 - Qh4")
 (display (chessboard->string c))
- 
+
 ; white cannot attack black queen with G2-G3 because thus
 ; black queen would move to E4, forking white king and rook
 ; white has to move king to D2
