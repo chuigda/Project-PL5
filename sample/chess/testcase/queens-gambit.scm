@@ -28,7 +28,7 @@
 (display "Pxe5 - d4")
 (display (chessboard->string c))
 
-; white don't want black to push pawn at D lane, using E pawn to defend
+; white want to open the diagonal for bishop, so push pawn to E3
 (imp-move! c 'w 'E 2 'E 3)
 
 ; then, black could attack white king with bishop
