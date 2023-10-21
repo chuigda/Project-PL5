@@ -1,7 +1,9 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "dump.h"
 #include "parse.h"
 #include "rt.h"
 #include "rt_impl.h"
@@ -19,6 +21,7 @@
 static mscm_syntax_node find_last(mscm_syntax_node node);
 static char* read_to_string(char const *file);
 static bool ends_with(char const *str, char const *suffix);
+static bool is_empty_line(char const *str);
 
 typedef void (*mscm_ext_loader)(mscm_runtime *rt);
 
@@ -72,6 +75,55 @@ int main(int argc, char **argv) {
 #endif /* _WIN32 */
             loader(rt);
         }
+        else if (!strcmp(argv[i], "--repl")) {
+            if (i != argc - 1) {
+                fprintf(stderr,
+                        "error: --repl must be the last argument\n");
+                continue;
+            }
+
+            char inbuf[4096];
+            while (true) {
+                printf("mini-scheme> ");
+                fflush(stdout);
+                if (!fgets(inbuf, sizeof(inbuf), stdin)) {
+                    fprintf(stderr, "\nMoriturus te saluto.\n");
+                    break;
+                }
+
+                if (strlen(inbuf) == sizeof(inbuf) - 1) {
+                    fprintf(stderr,
+                            "error: input too long\n");
+                    continue;
+                }
+
+                if (is_empty_line(inbuf)) {
+                    continue;
+                }
+
+                mscm_syntax_node node = mscm_parse("<stdin>", inbuf);
+                if (!node) {
+                    fprintf(stderr,
+                            "error: could not parse input\n");
+                    continue;
+                }
+
+                if (saved_node) {
+                    last_node->next = node;
+                    last_node = find_last(node);
+                }
+                else {
+                    saved_node = node;
+                    last_node = find_last(node);
+                }
+                mscm_value ret = runtime_eval_entry(rt, node);
+                if (ret) {
+                    mscm_value_dump(ret);
+                    putchar('\n');
+                    fflush(stdout);
+                }
+            }
+        }
         else {
             char *content = read_to_string(argv[i]);
             if (!content) {
@@ -99,7 +151,7 @@ int main(int argc, char **argv) {
                 saved_node = node;
                 last_node = find_last(node);
             }
-            runtime_eval(rt, node, true);
+            runtime_eval_entry(rt, node);
         }
     }
 
@@ -145,4 +197,14 @@ static bool ends_with(char const *str, char const *suffix) {
         return false;
     }
     return !strcmp(str + str_len - suffix_len, suffix);
+}
+
+static bool is_empty_line(char const *str) {
+    while (*str) {
+        if (!isspace(*str)) {
+            return false;
+        }
+        ++str;
+    }
+    return true;
 }

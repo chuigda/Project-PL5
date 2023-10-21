@@ -1,6 +1,7 @@
 #ifndef MINI_SCHEME_RT_IMPL_H
 #define MINI_SCHEME_RT_IMPL_H
 
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -55,6 +56,7 @@ typedef struct st_mscm_runtime {
     managed_value *gc_pool;
     managed_scope *scope_pool;
 
+    jmp_buf err_jmp;
     stack_trace *trace;
 
     uint32_t next_type_id;
@@ -62,6 +64,8 @@ typedef struct st_mscm_runtime {
 
 mscm_runtime *runtime_new(void);
 void runtime_free(mscm_runtime *rt);
+mscm_value runtime_eval_entry(mscm_runtime *rt,
+                              mscm_syntax_node node);
 mscm_value runtime_eval(mscm_runtime *rt,
                         mscm_syntax_node syntax_node,
                         bool multiple);

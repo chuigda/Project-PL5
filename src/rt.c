@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <inttypes.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,7 +71,8 @@ void mscm_runtime_trace_exit(mscm_runtime *rt) {
 
         trace = trace->next;
     }
-    exit(1);
+
+    longjmp(rt->err_jmp, 1);
 }
 
 void mscm_gc_toggle(mscm_runtime *rt, bool enable) {
@@ -218,6 +220,35 @@ void runtime_free(mscm_runtime *rt) {
     free(rt);
 }
 
+mscm_value runtime_eval_entry(mscm_runtime *rt,
+                              mscm_syntax_node node) {
+    if (setjmp(rt->err_jmp) == 0) {
+        return runtime_eval(rt, node, true);
+    }
+
+    while (rt->scope_chain->parent) {
+        runtime_pop_scope_chain(rt);
+    }
+
+    while (rt->scope_chain->chain->parent) {
+        runtime_pop_scope(rt);
+    }
+
+    /* TODO */
+    /* would leak some memory but fine yet */
+    rt->rooted_groups = 0;
+
+    stack_trace *trace = rt->trace;
+    while (trace) {
+        stack_trace *current = trace;
+        trace = trace->next;
+        free(current);
+    }
+    rt->trace = 0;
+
+    return 0;
+}
+
 mscm_value runtime_eval(mscm_runtime *rt,
                         mscm_syntax_node node,
                         bool multiple) {
@@ -342,7 +373,7 @@ mscm_value runtime_eval(mscm_runtime *rt,
 
 /* internals */
 
-// TODO works for now but needs heavy refactor
+/* TODO works for now but needs heavy refactor */
 static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     mscm_value callee = runtime_eval(rt, apply->callee, true);
     if (!callee ||
