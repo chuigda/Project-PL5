@@ -89,9 +89,8 @@ int main(int argc, char **argv) {
                 free(content);
                 continue;
             }
-            free(content);
 
-            runtime_eval(rt, node, true);
+            free(content);
             if (saved_node) {
                 last_node->next = node;
                 last_node = find_last(node);
@@ -100,8 +99,10 @@ int main(int argc, char **argv) {
                 saved_node = node;
                 last_node = find_last(node);
             }
+            runtime_eval(rt, node, true);
         }
     }
+
     runtime_free(rt);
     mscm_free_syntax_node(saved_node);
 

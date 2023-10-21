@@ -162,6 +162,7 @@ void mscm_free_syntax_node(mscm_syntax_node node) {
             }
             case MSCM_SYN_IF: {
                 mscm_if *if_ = (mscm_if*)current;
+                mscm_free_syntax_node(if_->cond);
                 mscm_free_syntax_node(if_->then);
                 mscm_free_syntax_node(if_->otherwise);
                 break;

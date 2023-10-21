@@ -523,6 +523,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         managed_value *current = iter;
         iter = iter->next;
         mscm_free_value(current->value);
+        free(current);
     }
 
     rt->gc_pool = iter;
@@ -531,6 +532,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
             managed_value *freed = iter->next;
             iter->next = freed->next;
             mscm_free_value(freed->value);
+            free(freed);
         }
         else {
             iter = iter->next;
@@ -542,6 +544,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         managed_scope *current = scope_iter;
         scope_iter = scope_iter->next;
         mscm_scope_free(current->scope);
+        free(current);
     }
 
     rt->scope_pool = scope_iter;
@@ -550,6 +553,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
             managed_scope *freed = scope_iter->next;
             scope_iter->next = freed->next;
             mscm_scope_free(freed->scope);
+            free(freed);
         }
         else {
             scope_iter = scope_iter->next;
