@@ -21,3 +21,6 @@
     (if (< x 0)
         (- 0 x)
         x))
+
+(define (sub1 x) (- x 1))
+(define (add1 x) (+ x 1))

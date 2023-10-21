@@ -33,8 +33,8 @@
 
 (define (check-move-horiz? chessboard side start-x end-x y)
     (if (< start-x end-x)
-        (imp-check-move-horiz? chessboard side start-x end-x y alpha+)
-        (imp-check-move-horiz? chessboard side start-x end-x y alpha-)))
+        (imp-check-move-horiz? chessboard side (alpha+ start-x) end-x y alpha+)
+        (imp-check-move-horiz? chessboard side (alpha- start-x) end-x y alpha-)))
 
 (define (imp-check-move-horiz? chessboard side start-x end-x y alpha)
     (cond [(= start-x end-x)
@@ -45,8 +45,8 @@
 
 (define (check-move-vert? chessboard side start-y end-y x)
     (if (< start-y end-y)
-        (imp-check-move-vert? chessboard side start-y end-y x +)
-        (imp-check-move-vert? chessboard side start-y end-y x -)))
+        (imp-check-move-vert? chessboard side (add1 start-y) end-y x add1)
+        (imp-check-move-vert? chessboard side (sub1 start-y) end-y x sub1)))
 
 (define (imp-check-move-vert? chessboard side start-y end-y x delta)
     (cond [(= start-y end-y)
@@ -60,13 +60,20 @@
 ; (abs (start-y - end-y)), and no piece is in the way, and the destination is
 ; not occupied by a piece of the same side
 (define (check-move-diag? chessboard side start-x start-y end-x end-y)
-    (define dx (- end-x start-x))
+    (define dx (alpha-diff end-x start-x))
     (define dy (- end-y start-y))
     (define dx-fn (if (< dx 0) alpha- alpha+))
-    (define dy-fn (if (< dy 0) - +))
+    (define dy-fn (if (< dy 0) sub1 add1))
     (if (not (= (abs dx) (abs dy)))
         false
-        (imp-check-move-diag? chessboard side start-x start-y end-x end-y dx-fn dy-fn)))
+        (imp-check-move-diag? chessboard
+                              side
+                              (dx-fn start-x)
+                              (dy-fn start-y)
+                              end-x
+                              end-y
+                              dx-fn
+                              dy-fn)))
 
 (define (imp-check-move-diag? chessboard side start-x start-y end-x end-y dx-fn dy-fn)
     (cond [(and (= start-x end-x) (= start-y end-y))
@@ -113,7 +120,7 @@
           [(and (= abs-dx 1) (= abs-dy 1))
            ; pawns can move diagonally if that would capture an opponent's piece
            ; or if that would be an en passant move (not implemented yet)
-           (contains? (side-pieces (opposite side))
+           (contains? (side-pieces (opponent-side side))
                       (chessboard-ref chessboard end-x end-y))]
           [(= abs-dx 0)
            ; pawns can move forward, 2 squares if it's the first move, or 1
