@@ -8,4 +8,5 @@
   sample/chess/attack-check.scm \
   sample/chess/move-check.scm \
   sample/chess/move.scm \
+  sample/chess/upgrade.scm \
   $@

@@ -32,16 +32,16 @@
           [else false]))
 
 (define (check-move-horiz? chessboard side start-x end-x y)
-    (if (< start-x end-x)
+    (if (< (alpha->idx start-x) (alpha->idx end-x))
         (imp-check-move-horiz? chessboard side (alpha+ start-x) end-x y alpha+)
         (imp-check-move-horiz? chessboard side (alpha- start-x) end-x y alpha-)))
 
 (define (imp-check-move-horiz? chessboard side start-x end-x y alpha)
     (cond [(= start-x end-x)
            (not (contains? (side-pieces side)
-                           (chessboard-ref chessboard alpha start-x y)))]
-          [(not (= '() (chessboard-ref chessboard alpha start-x y))) false]
-          [else (imp-check-move-horiz? chessboard side alpha end-x y alpha)]))
+                           (chessboard-ref chessboard start-x y)))]
+          [(not (= '() (chessboard-ref chessboard start-x y))) false]
+          [else (imp-check-move-horiz? chessboard side end-x y alpha)]))
 
 (define (check-move-vert? chessboard side start-y end-y x)
     (if (< start-y end-y)
@@ -92,7 +92,7 @@
 (define (check-move-king? chessboard side start-x start-y end-x end-y)
     ; ensure that moving just 1 square in any direction
     ; and target square is not occupied by a piece of the same side
-    (define dx (abs (- end-x start-x)))
+    (define dx (abs (alpha-diff end-x start-x)))
     (define dy (abs (- end-y start-y)))
     (and (or (= dx 1) (= dy 1))
          (not (contains? (side-pieces side)
@@ -101,7 +101,7 @@
 (define (check-move-knight? chessboard side start-x start-y end-x end-y)
     ; ensure that moving 2 squares in one direction and 1 square in the other
     ; and target square is not occupied by a piece of the same side
-    (define dx (abs (- end-x start-x)))
+    (define dx (abs (alpha-diff end-x start-x)))
     (define dy (abs (- end-y start-y)))
     (and (or (and (= dx 2) (= dy 1))
              (and (= dx 1) (= dy 2)))
