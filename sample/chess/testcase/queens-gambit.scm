@@ -101,7 +101,8 @@
 ; white queen to E1
 (imp-move! c 'w 'D 1 'E 1)
 
-(display "Qe1")
-(display (chessboard->string c))
+; black long castle
+(imp-ooo! c 'b)
 
-; TODO implement castling
+(display "Qe1 - O-O-O")
+(display (chessboard->string c))
