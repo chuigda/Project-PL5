@@ -22,17 +22,6 @@
         false
         (= (chessboard-ref chessboard (car position) (cdr position)) attacker)))
 
-; return true if attacker piece is found at (apply-n dx x) (apply-n dy y)
-(define (has-attacker? chessboard x y dx dy attacker)
-    (cond [(= x '()) false]
-          [(= y '()) false]
-          [else (begin
-              (define this-piece (chessboard-ref chessboard x y))
-              (cond [(= this-piece attacker) true]
-                    [(= this-piece '())
-                     (has-attacker? chessboard (dx x) (dy y) dx dy attacker)]
-                    [else false]))]))
-
 ; return true if the coordinate is attacked by a pawn of the given side
 (define (pawn-attack? chessboard side x y)
     (define pawn-piece (if (= side 'w) 'P 'p))
@@ -101,11 +90,22 @@
                    (has-attacker? chessboard x y id delimited+ attacker))))
 
 ; return true if there's an attacker at diagonal direction
-(define (has-attacker-at-diagonal? chessboard x y attacker)
+(define (has-attacker-at-diag? chessboard x y attacker)
     (or-list (list (has-attacker? chessboard x y alpha- delimited- attacker)
                    (has-attacker? chessboard x y alpha- delimited+ attacker)
                    (has-attacker? chessboard x y alpha+ delimited- attacker)
                    (has-attacker? chessboard x y alpha+ delimited+ attacker))))
+
+; return true if attacker piece is found at (apply-n dx x) (apply-n dy y)
+(define (has-attacker? chessboard x y dx dy attacker)
+    (cond [(= x '()) false]
+          [(= y '()) false]
+          [else (begin
+              (define this-piece (chessboard-ref chessboard x y))
+              (cond [(= this-piece attacker) true]
+                    [(= this-piece '())
+                     (has-attacker? chessboard (dx x) (dy y) dx dy attacker)]
+                    [else false]))]))
 
 ; return true if the coordinate is attacked by a rook of the given side
 (define (rook-attack? chessboard side x y)
@@ -115,10 +115,10 @@
 ; return true if the coordinte is attacked by a bishop of the given side
 (define (bishop-attack? chessboard side x y)
     (define bishop-piece (if (= side 'w) 'B 'b))
-    (has-attacker-at-diagonal? chessboard x y bishop-piece))
+    (has-attacker-at-diag? chessboard x y bishop-piece))
 
 ; return true if the coordinate is attacked by a queen of the given side
 (define (queen-attack? chessboard side x y)
     (define queen-piece (if (= side 'w) 'Q 'q))
-    (or (has-attacker-at-hv? chessboard side x y queen-piece)
-        (has-attacker-at-diagonal? chessboard side x y queen-piece)))
+    (or (has-attacker-at-hv? chessboard x y queen-piece)
+        (has-attacker-at-diag? chessboard x y queen-piece)))

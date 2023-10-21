@@ -32,7 +32,8 @@
           [(= char 'E) 4]
           [(= char 'F) 5]
           [(= char 'G) 6]
-          [(= char 'H) 7]))
+          [(= char 'H) 7]
+          [else (error "unknown char index")]))
 
 (define (alpha- char)
     (cond [(= char 'A) '()]
@@ -76,6 +77,15 @@
 (define (delimited+2 x) (delimited+ (delimited+ x)))
 (define (delimited-2 x) (delimited- (delimited- x)))
 
+(define (alpha-diff x y)
+    (cond [(= x '()) (error "x is '()")]
+          [(= y '()) (error "y is '()")]
+          [(= x y) 0]
+          [else (begin
+                    (define x-idx (alpha->idx x))
+                    (define y-idx (alpha->idx y))
+                    (- x-idx y-idx))]))
+
 (define (chessboard-ref chessboard x y)
     (define x-idx (alpha->idx x))
     (define linear-idx (+ (* 8 (- 8 y)) x-idx))
@@ -113,3 +123,11 @@
                                     (piece->string (vector-ref chessboard linear-idx))))
                       (iter-impl chessboard (+ linear-idx 1)))]))
     (iter-impl chessboard 0))
+
+(define (find-piece chessboard piece)
+    (define (iter-impl chessboard x y)
+        (cond [(< 8 y) '()]
+              [(= '() x) (iter-impl chessboard 'A (+ y 1))]
+              [(= piece (chessboard-ref chessboard x y)) (cons x y)]
+              [else (iter-impl chessboard (alpha+ x) y)]))
+    (iter-impl chessboard 'A 1))

@@ -1,11 +1,11 @@
 (define (can-move? chessboard side start-x start-y end-x end-y)
     (define piece (chessboard-ref chessboard start-x start-y))
     (define dest-piece (chessboard-ref chessboard end-x end-y))
-    (cond [(and (= start-x x) (= start-y y)) false]
+    (cond [(and (= start-x end-x) (= start-y end-y)) false]
           [(= piece '()) false]
           [(not (contains? (side-pieces side) piece)) false]
-          [(contains (side-pieces side) dest-piece) false]
-          [(not (valid-move? chessboard start-x start-y end-x end-y piece)) false]))
+          [(contains? (side-pieces side) dest-piece) false]
+          [else (valid-move? chessboard side start-x start-y end-x end-y piece)]))
 
 (define (valid-move? chessboard side start-x start-y end-x end-y piece)
     (cond [(or (= piece 'R) (= piece 'r))
@@ -102,14 +102,14 @@
                          (chessboard-ref chessboard end-x end-y)))))
 
 (define (check-move-pawn? chessboard side start-x start-y end-x end-y)
-    (define dx (- end-x start-x))
+    (define dx (alpha-diff end-x start-x))
     (define dy (- end-y start-y))
     (define abs-dx (abs dx))
     (define abs-dy (abs dy))
     ; pawns can only move forward, meaning that if side is white, dy should be
     ; positive, and if side is black, dy should be negative
-    (cond [(and (= side 'w') (< dy 0)) false]
-          [(and (= side 'b') (> dy 0)) false]
+    (cond [(and (= side 'w) (< dy 0)) false]
+          [(and (= side 'b) (< 0 dy)) false]
           [(and (= abs-dx 1) (= abs-dy 1))
            ; pawns can move diagonally if that would capture an opponent's piece
            ; or if that would be an en passant move (not implemented yet)
@@ -120,9 +120,9 @@
            ; square otherwise, but only if the target square is not occupied
            (begin
                (define max-moves
-                       (cond [(and (= side 'w') (= start-y 2)) 2]
-                             [(and (= side 'b') (= start-y 7)) 2]
+                       (cond [(and (= side 'w) (= start-y 2)) 2]
+                             [(and (= side 'b) (= start-y 7)) 2]
                              [else 1]))
-               (if (> abs-dy max-moves)
+               (if (< max-moves abs-dy)
                    false
-                   (= '() (chessboard-ref chessboard end-x end-y))))))
+                   (= '() (chessboard-ref chessboard end-x end-y))))]))

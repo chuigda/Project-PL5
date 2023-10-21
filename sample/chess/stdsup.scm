@@ -5,6 +5,8 @@
 (define (or x y) (if x true y))
 (define (id x) x)
 
+(define (not x) (if x false true))
+
 (define (or-list xs)
     (if (= xs '())
         false
