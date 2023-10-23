@@ -22,6 +22,7 @@ static mscm_syntax_node find_last(mscm_syntax_node node);
 static char* read_to_string(char const *file);
 static bool ends_with(char const *str, char const *suffix);
 static bool is_empty_line(char const *str);
+static bool strcmp_spaceignore(char const *input, char const *test);
 
 typedef void (*mscm_ext_loader)(mscm_runtime *rt);
 
@@ -84,9 +85,11 @@ int main(int argc, char **argv) {
 
             char inbuf[4096];
             while (true) {
-                printf("mini-scheme> ");
+                fprintf(stderr, "mini-scheme> ");
                 fflush(stdout);
-                if (!fgets(inbuf, sizeof(inbuf), stdin)) {
+                if (!fgets(inbuf, sizeof(inbuf), stdin)
+                    || strcmp_spaceignore(inbuf, "exit")
+                    || strcmp_spaceignore(inbuf, "quit")) {
                     fprintf(stderr, "\nMoriturus te saluto.\n");
                     break;
                 }
@@ -207,4 +210,24 @@ static bool is_empty_line(char const *str) {
         ++str;
     }
     return true;
+}
+
+static bool strcmp_spaceignore(char const *input, char const *test) {
+    while (input[0] && isspace(input[0])) {
+        ++input;
+    }
+
+    while (test[0]) {
+        if (input[0] != test[0]) {
+            return false;
+        }
+        ++input;
+        ++test;
+    }
+
+    while (input[0] && isspace(input[0])) {
+        ++input;
+    }
+
+    return !input[0];
 }
