@@ -21,6 +21,7 @@
     static mscm_value FNAME(MSCM_NATIVE_FN_PARAM)
 
 MSCM_NATIVE_FN(display);
+MSCM_NATIVE_FN(print);
 MSCM_NATIVE_FN(error);
 MSCM_NATIVE_FN(equals);
 MSCM_NATIVE_FN(less_than);
@@ -50,6 +51,7 @@ void mscm_load_ext(mscm_runtime *rt) {
 
     mscm_value display_v =
         mscm_make_native_function("display", display, 0, 0, 0);
+    mscm_value print_v = mscm_make_native_function("print", print, 0, 0, 0);
     mscm_value error_v =
         mscm_make_native_function("error", error, 0, 0, 0);
     mscm_value equals_v =
@@ -77,6 +79,7 @@ void mscm_load_ext(mscm_runtime *rt) {
         mscm_make_native_function("set-cdr!", set_cdr, 0, 0, 0);
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
+    mscm_runtime_push(rt, "print", (mscm_value)print_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);
     mscm_runtime_push(rt, "equals?", (mscm_value)equals_v);
     mscm_runtime_push(rt, "=", (mscm_value)equals_v);
@@ -105,6 +108,7 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
 
     mscm_gc_add(rt, display_v);
+    mscm_gc_add(rt, print_v);
     mscm_gc_add(rt, error_v);
     mscm_gc_add(rt, equals_v);
     mscm_gc_add(rt, less_than_v);
@@ -134,6 +138,31 @@ MSCM_NATIVE_FN(display) {
         putchar(' ');
     }
     putchar('\n');
+    return 0;
+}
+
+MSCM_NATIVE_FN(print) {
+    (void)rt;
+    (void)scope;
+    (void)ctx;
+
+    for (size_t i = 0; i < narg; i++) {
+        if (!args[i]) {
+            printf("null");
+            continue;
+        }
+
+        switch (args[i]->type) {
+            case MSCM_TYPE_STRING: {
+                mscm_string *s = (mscm_string*)args[i];
+                printf("%s", s->buf);
+                break;
+            }
+            default:
+                mscm_value_dump(args[i]);
+                break;
+        }
+    }
     return 0;
 }
 
