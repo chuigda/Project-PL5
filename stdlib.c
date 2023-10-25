@@ -108,6 +108,7 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
 
     mscm_gc_add(rt, display_v);
+    mscm_gc_add(rt, print_v);
     mscm_gc_add(rt, error_v);
     mscm_gc_add(rt, equals_v);
     mscm_gc_add(rt, less_than_v);
