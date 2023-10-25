@@ -12,3 +12,5 @@
 
 (display (my-car a) (my-cdr a))
 (display (my-car b) "," (my-cdr b))
+
+(print (my-car a) "," (my-cdr a))
