@@ -34,7 +34,7 @@
 
 ### 杂项
 - [x] 求值多个脚本
-- [ ] REPL
+- [x] REPL
 
 ### 不会实现
 - 尾递归和尾调用优化
@@ -76,15 +76,37 @@ WIN32=1 make
 
 ## 玩耍
 
-### Unix
+### 运行脚本
+
+#### Unix
 ```bash
 LD_LIBRARY_PATH=. ./mscm libmscmstd.so sample/first-class-function.scm
 ```
 
-### Windows
-```
+#### Windows
+```bash
 ./mscm libmscmstd.dll sample/first-class-function.scm
 ```
+
+------
+
+一次性指定多个脚本也可以
+
+### 运行 REPL
+
+#### Unix
+```bash
+LD_LIBRARY_PATH=. ./mscm libmscmstd.so --repl
+```
+
+#### Windows
+```bash
+./mscm libmscmstd.dll --repl
+```
+
+------
+
+同时指定脚本和 `--repl` 也可以，Mini Scheme 会先加载并运行指定的脚本，然后进入 REPL。注意 `--repl` 必须是最后一个命令行参数。
 
 ## 扩展
 
