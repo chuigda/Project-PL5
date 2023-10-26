@@ -20,7 +20,7 @@ pub mod MSCMType {
     pub const PAIR: u8 = 4;
     pub const FUNCTION: u8 = 5;
     pub const HANDLE: u8 = 6;
-    pub const NIL: u8 = 7;
+    pub const NATIVE: u8 = 7;
 }
 
 pub unsafe fn type_string(t: u8) -> String {
@@ -58,6 +58,14 @@ pub struct MSCMFloat {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct MSCMStringHead {
+    pub base: MSCMValueBase,
+    pub len: usize,
+    //
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct MSCMPair {
     pub base: MSCMValueBase,
     pub fst: MSCMValue,
@@ -78,11 +86,8 @@ pub struct MSCMHandle {
 #[derive(Copy, Clone)]
 pub struct MSCMFunction {
     pub base: MSCMValueBase,
-    pub name: *const c_char,
-    pub fnptr: MSCMNativeFnPtr,
-    pub ctx: *mut c_void,
-    pub ctx_dtor: Option<MSCMUserDtor>,
-    pub ctx_marker: Option<MSCMUserMarker>
+    pub fndef: *mut c_void,
+    pub scope: *mut MSCMScope
 }
 
 pub type MSCMValue = *mut MSCMValueBase;
@@ -96,6 +101,16 @@ pub type MSCMNativeFnPtr = extern "C" fn(
     *mut MSCMValue
 ) -> MSCMValue;
 
+#[repr(C)]
+pub struct MSCMNativeFunction {
+    pub base: MSCMValueBase,
+    pub name: *const c_char,
+    pub fnptr: MSCMNativeFnPtr,
+    pub ctx: *mut c_void,
+    pub ctx_dtor: Option<MSCMUserDtor>,
+    pub ctx_marker: Option<MSCMUserMarker>
+}
+
 extern "C" {
     pub fn mscm_type_name(t: u8) -> *const c_char;
     pub fn mscm_value_type_name(value: MSCMValue) -> *const c_char;
@@ -103,8 +118,7 @@ extern "C" {
     pub fn mscm_make_int(value: i64) -> MSCMValue;
     pub fn mscm_make_float(value: f64) -> MSCMValue;
     pub fn mscm_make_string(value: MSCMSlice, escape: bool, quote: bool) -> MSCMValue;
-    // Rust cannot access C VLA without many efforts, so not including this API
-    // pub unsafe fn mscm_alloc_string
+    pub fn mscm_alloc_string(size: usize) -> MSCMValue;
     pub fn mscm_make_pair(fst: MSCMValue, snd: MSCMValue) -> MSCMValue;
     pub fn mscm_make_handle(
         user_tid: u32,
