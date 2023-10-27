@@ -117,7 +117,7 @@ extern "C" {
 
     pub fn mscm_make_int(value: i64) -> MSCMValue;
     pub fn mscm_make_float(value: f64) -> MSCMValue;
-    pub fn mscm_make_string(value: MSCMSlice, escape: bool, quote: bool) -> MSCMValue;
+    pub fn mscm_make_string(value: MSCMSlice, escape: bool, esc_ok: *mut bool) -> MSCMValue;
     pub fn mscm_alloc_string(size: usize) -> MSCMValue;
     pub fn mscm_make_pair(fst: MSCMValue, snd: MSCMValue) -> MSCMValue;
     pub fn mscm_make_handle(
