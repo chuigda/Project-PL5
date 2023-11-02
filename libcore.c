@@ -22,6 +22,7 @@
 
 MSCM_NATIVE_FN(display);
 MSCM_NATIVE_FN(print);
+MSCM_NATIVE_FN(println);
 MSCM_NATIVE_FN(error);
 MSCM_NATIVE_FN(equals);
 MSCM_NATIVE_FN(less_than);
@@ -55,6 +56,8 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value display_v =
         mscm_make_native_function("display", display, 0, 0, 0);
     mscm_value print_v = mscm_make_native_function("print", print, 0, 0, 0);
+    mscm_value println_v =
+        mscm_make_native_function("println", println, 0, 0, 0);
     mscm_value error_v =
         mscm_make_native_function("error", error, 0, 0, 0);
     mscm_value equals_v =
@@ -89,6 +92,7 @@ void mscm_load_ext(mscm_runtime *rt) {
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "print", (mscm_value)print_v);
+    mscm_runtime_push(rt, "println", (mscm_value)println_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);
     mscm_runtime_push(rt, "equals?", (mscm_value)equals_v);
     mscm_runtime_push(rt, "=", (mscm_value)equals_v);
@@ -121,6 +125,7 @@ void mscm_load_ext(mscm_runtime *rt) {
 
     mscm_gc_add(rt, display_v);
     mscm_gc_add(rt, print_v);
+    mscm_gc_add(rt, println_v);
     mscm_gc_add(rt, error_v);
     mscm_gc_add(rt, equals_v);
     mscm_gc_add(rt, less_than_v);
@@ -178,6 +183,12 @@ MSCM_NATIVE_FN(print) {
                 break;
         }
     }
+    return 0;
+}
+
+MSCM_NATIVE_FN(println) {
+    print(rt, scope, ctx, narg, args);
+    putchar('\n');
     return 0;
 }
 
