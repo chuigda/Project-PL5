@@ -20,6 +20,12 @@ static mscm_value runtime_eval_loop(mscm_runtime *rt, mscm_loop *loop);
 static mscm_value runtime_eval_break(mscm_runtime *rt,
                                      mscm_break *brk,
                                      loop_context *loop_ctx);
+static mscm_value runtime_eval_and(mscm_runtime *rt,
+                                   mscm_apply *apply,
+                                   loop_context *loop_ctx);
+static mscm_value runtime_eval_or(mscm_runtime *rt,
+                                  mscm_apply *apply,
+                                  loop_context *loop_ctx);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
 static mscm_scope *runtime_push_scope(mscm_runtime *rt, bool fat);
 static void runtime_pop_scope(mscm_runtime *rt);
@@ -36,6 +42,9 @@ static void runtime_gc_premark(mscm_runtime *rt);
 static void runtime_gc_mark(mscm_runtime *rt);
 static void runtime_gc_cleanup(mscm_runtime *rt);
 static void imp_gc_mark(mscm_runtime *rt, mscm_value value);
+
+static mscm_string g_and_proc_sym = { MSCM_TYPE_SYMBOL, 1, 4, "<and>" };
+static mscm_string g_or_proc_sym = { MSCM_TYPE_SYMBOL, 1, 3, "<or>" };
 
 /* public APIs */
 
@@ -196,6 +205,9 @@ mscm_runtime *runtime_new() {
     rt->value_queue_tail = 0;
     rt->trace = 0;
     rt->next_type_id = 0;
+
+    mscm_runtime_push(rt, "and", (mscm_value)&g_and_proc_sym);
+    mscm_runtime_push(rt, "or", (mscm_value)&g_or_proc_sym);
     return rt;
 }
 
@@ -409,11 +421,21 @@ static mscm_value runtime_apply(mscm_runtime *rt,
     mscm_value callee = runtime_eval(rt, apply->callee, true, loop_ctx);
     if (!callee ||
         (callee->type != MSCM_TYPE_FUNCTION &&
-         callee->type != MSCM_TYPE_NATIVE)) {
+         callee->type != MSCM_TYPE_NATIVE &&
+         callee != (mscm_value)&g_and_proc_sym &&
+         callee != (mscm_value)&g_or_proc_sym)) {
         err_printf(apply->callee->file, apply->callee->line,
                    "%s is not a function",
                    mscm_value_type_name(callee));
         mscm_runtime_trace_exit(rt);
+    }
+
+    if (callee == (mscm_value)&g_and_proc_sym) {
+        return runtime_eval_and(rt, apply, loop_ctx);
+    }
+    
+    if (callee == (mscm_value)&g_or_proc_sym) {
+        return runtime_eval_or(rt, apply, loop_ctx);
     }
 
     rooted_value rooted_callee = { 0, callee };
@@ -570,6 +592,36 @@ static mscm_value runtime_eval_break(mscm_runtime *rt,
     }
 
     longjmp(loop_ctx->loop_jmp_buf, 1);
+}
+
+static mscm_value runtime_eval_and(mscm_runtime *rt,
+                                   mscm_apply *apply,
+                                   loop_context *loop_ctx) {
+    mscm_syntax_node iter = apply->args;
+    mscm_value result = 0;
+    while (iter) {
+        result = runtime_eval(rt, iter, false, loop_ctx);
+        if (!mscm_value_is_true(result)) {
+            return 0;
+        }
+        iter = iter->next;
+    }
+    return result;
+}
+
+static mscm_value runtime_eval_or(mscm_runtime *rt,
+                                  mscm_apply *apply,
+                                  loop_context *loop_ctx) {
+    mscm_syntax_node iter = apply->args;
+    mscm_value result = 0;
+    while (iter) {
+        result = runtime_eval(rt, iter, false, loop_ctx);
+        if (mscm_value_is_true(result)) {
+            return result;
+        }
+        iter = iter->next;
+    }
+    return 0;
 }
 
 static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
