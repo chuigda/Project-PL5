@@ -127,7 +127,7 @@ extern "C" {
 pub type MSCMScope = c_void;
 
 extern "C" {
-    pub fn mscm_scope_new(parent: *mut MSCMScope) -> *mut MSCMScope;
+    pub fn mscm_scope_new(parent: *mut MSCMScope, fat: i8) -> *mut MSCMScope;
     pub fn mscm_scope_push(scope: *mut MSCMScope,
                            name: *const c_char,
                            value: MSCMValue);
