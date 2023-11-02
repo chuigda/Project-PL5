@@ -18,11 +18,11 @@ endif
 
 ifndef WIN32
 	SHARED_LIB_NAME = libmscm.so
-	STDLIB_LIB_NAME = libmscmstd.so
+	STDLIB_LIB_NAME = libcore.so
 	EXECUTABLE_NAME = mscm
 else
 	SHARED_LIB_NAME = libmscm.dll
-	STDLIB_LIB_NAME = libmscmstd.dll
+	STDLIB_LIB_NAME = libcore.dll
 	EXECUTABLE_NAME = mscm.exe
 endif
 
@@ -63,11 +63,11 @@ libmscmstd-phony: libmscm-phony libmscmstd-log $(STDLIB_LIB_NAME)
 libmscmstd-log:
 	@echo Building shared library $(STDLIB_LIB_NAME)
 
-$(STDLIB_LIB_NAME): $(HEADER_FILES) $(SHARED_LIB_NAME) stdlib.o
+$(STDLIB_LIB_NAME): $(HEADER_FILES) $(SHARED_LIB_NAME) libcore.o
 	$(call LOG,LINK,$(STDLIB_LIB_NAME))
-	@$(CC) $(CFLAGS) stdlib.o -L. -lmscm -fPIC -shared -o $(STDLIB_LIB_NAME)
+	@$(CC) $(CFLAGS) libcore.o -L. -lmscm -fPIC -shared -o $(STDLIB_LIB_NAME)
 
-stdlib.o: stdlib.c $(HEADER_FILES)
+libcore.o: libcore.c $(HEADER_FILES)
 	$(call COMPILE,$<,$@)
 
 .PHONY: libmscm-phony libmscm-log
