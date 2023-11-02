@@ -146,7 +146,6 @@ extern "C" fn get_field(
                 mscm_runtime_trace_exit(rt)
             }
         };
-        mscm_gc_add(rt, ret);
         ret
     }
 }
@@ -192,8 +191,7 @@ extern "C" fn set_field(
         let field = CStr::from_ptr(field_data_ptr).to_string_lossy().to_string();
 
         struct_ptr.insert(field, value_v);
-        mscm_gc_add(rt, value_v);
-        value_v
+        null_mut()
     }
 }
 
