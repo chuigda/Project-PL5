@@ -265,17 +265,17 @@ extern "C" fn vector_set(
     }
 }
 
-extern "C" fn dealloc_vec(_ptr: *mut c_void) {
+extern "C" fn dealloc_vec(ptr: *mut c_void) {
     unsafe {
-        let _vec = Box::from_raw(_ptr as *mut Vec<MSCMValue>);
+        let _vec = Box::from_raw(ptr as *mut Vec<MSCMValue>);
     }
 }
 
-extern "C" fn mark_vec(_ptr: *mut c_void) {
+extern "C" fn mark_vec(rt: *mut MSCMRuntime, ptr: *mut c_void) {
     unsafe {
-        let vec = _ptr as *mut Vec<MSCMValue>;
+        let vec = ptr as *mut Vec<MSCMValue>;
         for v in (*vec).iter() {
-            mscm_gc_mark(*v);
+            mscm_gc_mark(rt, *v);
         }
     }
 }
