@@ -13,7 +13,13 @@
 #include "syntax.h"
 #include "util.h"
 
-static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
+static mscm_value runtime_apply(mscm_runtime *rt,
+                                mscm_apply *apply,
+                                loop_context *loop_ctx);
+static mscm_value runtime_eval_loop(mscm_runtime *rt, mscm_loop *loop);
+static mscm_value runtime_eval_break(mscm_runtime *rt,
+                                     mscm_break *brk,
+                                     loop_context *loop_ctx);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
 static mscm_scope *runtime_push_scope(mscm_runtime *rt);
 static void runtime_pop_scope(mscm_runtime *rt);
@@ -266,21 +272,26 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 mscm_defvar *defvar = (mscm_defvar*)node;
                 mscm_scope *scope = runtime_current_scope(rt);
                 bool defined;
-                mscm_scope_get_current(scope, defvar->var_name, &defined);
+                mscm_scope_get_current(scope,
+                                       defvar->var_name,
+                                       &defined);
                 if (defined) {
                     err_printf(node->file, node->line,
                                "%s already defined in current scope",
                                defvar->var_name);
                     mscm_runtime_trace_exit(rt);
                 }
-                mscm_value value = runtime_eval(rt, defvar->init, true);
+                mscm_value value = runtime_eval(rt,
+                                                defvar->init,
+                                                true,
+                                                loop_ctx);
                 mscm_scope_push(scope, defvar->var_name, value);
                 ret = 0;
                 break;
             }
             case MSCM_SYN_BEGIN: {
                 mscm_begin *begin = (mscm_begin*)node;
-                ret = runtime_eval(rt, begin->content, true);
+                ret = runtime_eval(rt, begin->content, true, loop_ctx);
                 break;
             }
             case MSCM_SYN_LAMBDA: case MSCM_SYN_DEFUN: {
@@ -315,14 +326,14 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 while (cond) {
                     if (node_is_ident(cond, "otherwise") ||
                         node_is_ident(cond, "else")) {
-                        ret = runtime_eval(rt, then, false);
+                        ret = runtime_eval(rt, then, false, loop_ctx);
                         goto cond_hit;
                     }
 
                     mscm_value cond_result =
-                        runtime_eval(rt, cond, false);
+                        runtime_eval(rt, cond, false, loop_ctx);
                     if (mscm_value_is_true(cond_result)) {
-                        ret = runtime_eval(rt, then, false);
+                        ret = runtime_eval(rt, then, false, loop_ctx);
                         goto cond_hit;
                     }
 
@@ -336,17 +347,33 @@ mscm_value runtime_eval(mscm_runtime *rt,
             case MSCM_SYN_IF: {
                 mscm_if *if_node = (mscm_if*)node;
                 mscm_value cond_result =
-                    runtime_eval(rt, if_node->cond, true);
+                    runtime_eval(rt, if_node->cond, true, loop_ctx);
                 if (mscm_value_is_true(cond_result)) {
-                    ret = runtime_eval(rt, if_node->then, true);
+                    ret = runtime_eval(rt,
+                                       if_node->then,
+                                       true,
+                                       loop_ctx);
                 }
                 else if (if_node->otherwise) {
-                    ret = runtime_eval(rt, if_node->otherwise, true);
+                    ret = runtime_eval(rt,
+                                       if_node->otherwise,
+                                       true,
+                                       loop_ctx);
                 }
                 break;
             }
+            case MSCM_SYN_LOOP: {
+                mscm_loop *loop = (mscm_loop*)node;
+                ret = runtime_eval_loop(rt, loop);
+                break;
+            }
+            case MSCM_SYN_BREAK: {
+                mscm_break *brk = (mscm_break*)node;
+                ret = runtime_eval_break(rt, brk, loop_ctx);
+                break;
+            }
             case MSCM_SYN_APPLY: {
-                ret = runtime_apply(rt, (mscm_apply*)node);
+                ret = runtime_apply(rt, (mscm_apply*)node, loop_ctx);
                 break;
             }
         }
@@ -364,8 +391,10 @@ mscm_value runtime_eval(mscm_runtime *rt,
 /* internals */
 
 /* TODO works for now but needs heavy refactor */
-static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
-    mscm_value callee = runtime_eval(rt, apply->callee, true);
+static mscm_value runtime_apply(mscm_runtime *rt,
+                                mscm_apply *apply,
+                                loop_context *loop_ctx) {
+    mscm_value callee = runtime_eval(rt, apply->callee, true, loop_ctx);
     if (!callee ||
         (callee->type != MSCM_TYPE_FUNCTION &&
          callee->type != MSCM_TYPE_NATIVE)) {
@@ -382,7 +411,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     rooted_value *current_root = callee_arg_root.values;
     mscm_syntax_node arg = apply->args;
     while (arg) {
-        mscm_value arg_value = runtime_eval(rt, arg, false);
+        mscm_value arg_value = runtime_eval(rt, arg, false, loop_ctx);
         rooted_value *arg_root = malloc(sizeof(rooted_value));
         if (!arg_root) {
             err_print(arg->file, arg->line, "out of memory");
@@ -436,7 +465,8 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             trace->native_fn_name = 0;
             rt->trace = trace;
         }
-        mscm_value ret = runtime_eval(rt, fndef->body, true);
+
+        mscm_value ret = runtime_eval(rt, fndef->body, true, 0);
         if (trace) {
             rt->trace = trace->next;
             free(trace);
@@ -498,6 +528,35 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         }
         return ret;
     }
+}
+
+static mscm_value runtime_eval_loop(mscm_runtime *rt, mscm_loop *loop) {
+    loop_context loop_ctx;
+    loop_ctx.break_value = 0;
+    if (setjmp(loop_ctx.loop_jmp_buf) == 0) {
+        loop_ctx.break_value = 0;
+        while (true) {
+            runtime_eval(rt, loop->content, true, &loop_ctx);
+        }
+    } else {
+        return loop_ctx.break_value;
+    }
+}
+
+static mscm_value runtime_eval_break(mscm_runtime *rt,
+                                     mscm_break *brk,
+                                     loop_context *loop_ctx) {
+    if (!loop_ctx) {
+        err_print(brk->file, brk->line, "break outside loop");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (brk->content) {
+        loop_ctx->break_value = 
+            runtime_eval(rt, brk->content, false, loop_ctx);
+    }
+
+    longjmp(loop_ctx->loop_jmp_buf, 1);
 }
 
 static mscm_scope *runtime_current_scope(mscm_runtime *rt) {

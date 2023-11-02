@@ -48,7 +48,7 @@ typedef struct {
 typedef struct {
     MSCM_SYNTAX_NODE_COMMON
     mscm_syntax_node content;
-} mscm_begin;
+} mscm_begin, mscm_loop, mscm_break;
 
 typedef struct {
     MSCM_SYNTAX_NODE_COMMON
@@ -97,6 +97,14 @@ mscm_syntax_node mscm_make_apply(char const *file,
                                  mscm_syntax_node args);
 
 mscm_syntax_node mscm_make_begin(char const *file,
+                                 size_t line,
+                                 mscm_syntax_node content);
+
+mscm_syntax_node mscm_make_loop(char const *file,
+                                size_t line,
+                                mscm_syntax_node content);
+
+mscm_syntax_node mscm_make_break(char const *file,
                                  size_t line,
                                  mscm_syntax_node content);
 

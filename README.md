@@ -12,10 +12,9 @@
 - [x] 使用 `define` 定义函数
 - [x] 使用 `define` 定义变量
 - [x] `lambda` 与高阶函数
-- [ ] `let` 与 `let*` 语法
 - [x] 垃圾回收
 - [x] 内建的 `if`, `cond` 和 `begin` 控制流
-- [ ] 内建的 `loop` 与 `break` 控制流
+- [x] 内建的 `loop` 与 `break` 控制流
 - [x] 整数，浮点，字符串和符号类型
 - [x] 内建序对和列表
 - [x] Quote 语法（作为构造常量对象的语法糖）
@@ -42,6 +41,7 @@
 
 ### 不会实现
 - 尾递归和尾调用优化
+- `let` 与 `let*` 语法
 - Quasi-quote, eval 和 apply, 原编程
 - 宏
 - `call/cc`

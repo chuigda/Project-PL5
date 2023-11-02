@@ -25,6 +25,10 @@ static mscm_syntax_node parse_cond(tokenise_ctx *tokeniser,
                                    uint8_t rparen_kind);
 static mscm_syntax_node parse_if(tokenise_ctx *tokeniser,
                                  uint8_t rparen_kind);
+static mscm_syntax_node parse_loop(tokenise_ctx *tokeniser,
+                                   uint8_t rparen_kind);
+static mscm_syntax_node parse_break(tokenise_ctx *tokeniser,
+                                    uint8_t rparen_kind);
 static mscm_value parse_quoted_list(tokenise_ctx *tokeniser, bool *ok);
 static mscm_value parse_quoted_list_impl(tokenise_ctx *tokeniser,
                                          uint8_t rparen_kind,
@@ -143,6 +147,12 @@ static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
             return 0;
         }
         return mscm_make_begin(begin.file, begin.line, body);
+    }
+    else if (token_is_ident(t, "loop")) {
+        return parse_loop(tokeniser, rparen_kind);
+    }
+    else if (token_is_ident(t, "break")) {
+        return parse_break(tokeniser, rparen_kind);
     }
     else {
         mscm_syntax_node callee = parse_item(tokeniser);
@@ -419,6 +429,46 @@ static mscm_syntax_node parse_if(tokenise_ctx *tokeniser,
     }
 
     return mscm_make_if(if_.file, if_.line, cond, then, otherwise);
+}
+
+static mscm_syntax_node parse_loop(tokenise_ctx *tokeniser,
+                                   uint8_t rparen_kind) {
+    token loop = get_token(tokeniser);
+    assert(token_is_ident(loop, "loop"));
+
+    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind, 0);
+    if (!body) {
+        err_print(loop.file, loop.line,
+                  "expected loop body");
+        return 0;
+    }
+
+    return mscm_make_loop(loop.file, loop.line, body);
+}
+
+static mscm_syntax_node parse_break(tokenise_ctx *tokeniser,
+                                    uint8_t rparen_kind) {
+    token break_ = get_token(tokeniser);
+    assert(token_is_ident(break_, "break"));
+
+    if (peek_token(tokeniser).tk == rparen_kind) {
+        get_token(tokeniser);
+        return mscm_make_break(break_.file, break_.line, 0);
+    } else {
+        mscm_syntax_node value = parse_item(tokeniser);
+        if (!value) {
+            return 0;
+        }
+
+        token rp = get_token(tokeniser);
+        if (rp.tk != rparen_kind) {
+            unexpected_token(rp);
+            mscm_free_syntax_node(value);
+            return 0;
+        }
+
+        return mscm_make_break(break_.file, break_.line, value);
+    }
 }
 
 static mscm_value parse_quoted_list(tokenise_ctx *tokeniser, bool *ok) {

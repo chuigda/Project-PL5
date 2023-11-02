@@ -66,7 +66,7 @@ typedef struct st_mscm_runtime {
 } mscm_runtime;
 
 typedef struct st_loop_context {
-    jmp_buf jump_buf;
+    jmp_buf loop_jmp_buf;
     mscm_value break_value;
 } loop_context;
 
