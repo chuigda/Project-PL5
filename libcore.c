@@ -667,7 +667,7 @@ MSCM_NATIVE_FN(string_set) {
     }
 
     s->buf[i->value] = (char)c->value;
-    return args[2];
+    return 0;
 }
 
 MSCM_NATIVE_FN(make_pair) {
@@ -802,7 +802,7 @@ MSCM_NATIVE_FN(set_car) {
 
     mscm_pair *p = (mscm_pair*)args[0];
     p->fst = args[1];
-    return args[1];
+    return 0;
 }
 
 MSCM_NATIVE_FN(set_cdr) {
@@ -826,5 +826,5 @@ MSCM_NATIVE_FN(set_cdr) {
 
     mscm_pair *p = (mscm_pair*)args[0];
     p->snd = args[1];
-    return args[1];
+    return 0;
 }
