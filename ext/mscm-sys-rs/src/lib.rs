@@ -65,6 +65,13 @@ pub struct MSCMPair {
 }
 
 #[repr(C)]
+pub struct MSCMString {
+    pub base: MSCMValueBase,
+    pub size: usize,
+    pub data: [c_char; 0]
+}
+
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct MSCMHandle {
     pub base: MSCMValueBase,
