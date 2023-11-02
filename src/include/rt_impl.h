@@ -56,6 +56,9 @@ typedef struct st_mscm_runtime {
     managed_value *gc_pool;
     managed_scope *scope_pool;
 
+    managed_value *value_queue;
+    managed_value *value_queue_tail;
+
     jmp_buf err_jmp;
     stack_trace *trace;
 

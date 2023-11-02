@@ -87,7 +87,7 @@ typedef mscm_pair mscm_list;
 /* 用于释放用户数据的“析构函数”指针类型 */
 typedef void (*mscm_user_dtor)(void* ptr);
 /* 用于标记用户数据中 mscm_value 的“标记函数”指针类型 */
-typedef void (*mscm_user_marker)(void *ptr);
+typedef void (*mscm_user_marker)(mscm_runtime *rt, void *ptr);
 
 /* 句柄类型 */
 typedef struct {
@@ -143,7 +143,7 @@ mscm_value mscm_make_int(int64_t value);
 /* 创建一个浮点对象 */
 mscm_value mscm_make_float(double value);
 
-/* 创建一个字符串对象 
+/* 创建一个字符串对象
  *
  * escape 指定是否要对 value 进行转义，例如将 \n 替换为 LF，
  * 将 \\ 替换为 \。如果 escape 为 true 且 esc_ok 不为 NULL，
