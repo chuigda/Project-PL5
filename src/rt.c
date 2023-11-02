@@ -212,7 +212,7 @@ void runtime_free(mscm_runtime *rt) {
 mscm_value runtime_eval_entry(mscm_runtime *rt,
                               mscm_syntax_node node) {
     if (setjmp(rt->err_jmp) == 0) {
-        return runtime_eval(rt, node, true);
+        return runtime_eval(rt, node, true, 0);
     }
 
     while (rt->scope_chain->parent) {
@@ -240,7 +240,8 @@ mscm_value runtime_eval_entry(mscm_runtime *rt,
 
 mscm_value runtime_eval(mscm_runtime *rt,
                         mscm_syntax_node node,
-                        bool multiple) {
+                        bool multiple,
+                        loop_context *loop_ctx) {
     mscm_value ret = 0;
     while (node) {
         switch (node->kind) {

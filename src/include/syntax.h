@@ -23,10 +23,12 @@ enum {
     MSCM_SYN_LAMBDA  = 4,
     MSCM_SYN_COND    = 5,
     MSCM_SYN_IF      = 6,
+    MSCM_SYN_LOOP    = 7,
+    MSCM_SYN_BREAK   = 8,
 
-    /** syntax nodes that are not expressions */
-    MSCM_SYN_DEFVAR  = 7,
-    MSCM_SYN_DEFUN   = 8
+    /* syntax nodes that are not expressions */
+    MSCM_SYN_DEFVAR  = 100,
+    MSCM_SYN_DEFUN   = 101
 };
 
 typedef struct st_mscm_syntax {
