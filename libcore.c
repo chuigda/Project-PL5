@@ -31,6 +31,9 @@ MSCM_NATIVE_FN(sub);
 MSCM_NATIVE_FN(div);
 MSCM_NATIVE_FN(mod);
 MSCM_NATIVE_FN(string_concat);
+MSCM_NATIVE_FN(string_length);
+MSCM_NATIVE_FN(string_ref);
+MSCM_NATIVE_FN(string_set);
 MSCM_NATIVE_FN(make_pair);
 MSCM_NATIVE_FN(car);
 MSCM_NATIVE_FN(cdr);
@@ -65,6 +68,12 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value mod_v = mscm_make_native_function("mod", mod, 0, 0, 0);
     mscm_value strcat_v =
         mscm_make_native_function("strcat", string_concat, 0, 0, 0);
+    mscm_value strlen_v =
+        mscm_make_native_function("strlen", string_length, 0, 0, 0);
+    mscm_value string_ref_v =
+        mscm_make_native_function("string-ref", string_ref, 0, 0, 0);
+    mscm_value string_set_v =
+        mscm_make_native_function("string-set!", string_set, 0, 0, 0);
     mscm_value cons_v =
         mscm_make_native_function("make-pair", make_pair, 0, 0, 0);
     mscm_value car_v = mscm_make_native_function("car", car, 0, 0, 0);
@@ -97,6 +106,9 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "%", (mscm_value)mod_v);
     mscm_runtime_push(rt, "string-append", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "string-concat", (mscm_value)strcat_v);
+    mscm_runtime_push(rt, "string-length", (mscm_value)strlen_v);
+    mscm_runtime_push(rt, "string-ref", (mscm_value)string_ref_v);
+    mscm_runtime_push(rt, "string-set!", (mscm_value)string_set_v);
     mscm_runtime_push(rt, "~", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "cons", (mscm_value)cons_v);
     mscm_runtime_push(rt, "car", (mscm_value)car_v);
@@ -118,6 +130,9 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, div_v);
     mscm_gc_add(rt, mod_v);
     mscm_gc_add(rt, strcat_v);
+    mscm_gc_add(rt, strlen_v);
+    mscm_gc_add(rt, string_ref_v);
+    mscm_gc_add(rt, string_set_v);
     mscm_gc_add(rt, cons_v);
     mscm_gc_add(rt, car_v);
     mscm_gc_add(rt, cdr_v);
@@ -531,6 +546,117 @@ MSCM_NATIVE_FN(string_concat) {
 
     mscm_gc_add(rt, ret);
     return ret;
+}
+
+MSCM_NATIVE_FN(string_length) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 1) {
+        fprintf(stderr,
+                "error: string-length: expected 1 argument, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-length: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_value ret = mscm_make_int(s->size);
+    mscm_gc_add(rt, ret);
+    return ret;
+}
+
+MSCM_NATIVE_FN(string_ref) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: string-ref: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-ref: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[1] || args[1]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-ref: expected int value, got %s\n",
+                mscm_value_type_name(args[1]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_int *i = (mscm_int*)args[1];
+    if (i->value < 0 || i->value >= (int64_t)s->size) {
+        fprintf(stderr,
+                "error: string-ref: index out of bounds\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    int reti = s->buf[i->value];
+    mscm_value ret = mscm_make_int(reti);
+    mscm_gc_add(rt, ret);
+    return ret;
+}
+
+MSCM_NATIVE_FN(string_set) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 3) {
+        fprintf(stderr,
+                "error: string-set!: expected 3 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-set!: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[1] || args[1]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-set!: expected int value, got %s\n",
+                mscm_value_type_name(args[1]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[2] || args[2]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-set!: expected int value, got %s\n",
+                mscm_value_type_name(args[2]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_int *i = (mscm_int*)args[1];
+    mscm_int *c = (mscm_int*)args[2];
+    if (i->value < 0 || i->value >= (int64_t)s->size) {
+        fprintf(stderr,
+                "error: string-set!: index out of bounds\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    s->buf[i->value] = (char)c->value;
+    return args[2];
 }
 
 MSCM_NATIVE_FN(make_pair) {
