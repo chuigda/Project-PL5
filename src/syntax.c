@@ -76,10 +76,14 @@ mscm_syntax_node mscm_make_break(char const *file,
 mscm_syntax_node mscm_make_lambda(char const *file,
                                   size_t line,
                                   mscm_ident *param_names,
+                                  bool fat_param_scope,
+                                  bool fat_scope,
                                   mscm_syntax_node body) {
     MALLOC_CHK_RET(mscm_func_def, ret);
     MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_LAMBDA, file, line);
     ret->param_names = param_names;
+    ret->fat_param_scope = fat_param_scope;
+    ret->fat_scope = fat_scope;
     ret->body = body;
     return (mscm_syntax_node)ret;
 }
@@ -128,6 +132,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
                                     size_t line,
                                     mscm_slice func_name,
                                     mscm_ident *param_names,
+                                    bool fat_param_scope,
+                                    bool fat_scope,
                                     mscm_syntax_node body) {
     mscm_func_def *ret =
         malloc(sizeof(mscm_func_def) + func_name.len + 1);
@@ -137,6 +143,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
 
     MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_DEFUN, file, line);
     ret->param_names = param_names;
+    ret->fat_param_scope = fat_param_scope;
+    ret->fat_scope = fat_scope;
     ret->body = body;
     strncpy(ret->func_name, func_name.start, func_name.len);
     ret->func_name[func_name.len] = 0;

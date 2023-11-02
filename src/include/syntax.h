@@ -1,6 +1,7 @@
 #ifndef MINI_SCHEME_SYNTAX_H
 #define MINI_SCHEME_SYNTAX_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -80,6 +81,8 @@ typedef struct st_mscm_func_def{
     MSCM_SYNTAX_NODE_COMMON
     mscm_ident *param_names;
     mscm_syntax_node body;
+    bool fat_param_scope;
+    bool fat_scope;
     char func_name[];
 } mscm_func_def;
 
@@ -111,6 +114,8 @@ mscm_syntax_node mscm_make_break(char const *file,
 mscm_syntax_node mscm_make_lambda(char const *file,
                                   size_t line,
                                   mscm_ident *param_names,
+                                  bool fat_param_scope,
+                                  bool fat_scope,
                                   mscm_syntax_node body);
 
 mscm_syntax_node mscm_make_cond(char const *file,
@@ -133,6 +138,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
                                     size_t line,
                                     mscm_slice func_name,
                                     mscm_ident *param_names,
+                                    bool fat_param_scope,
+                                    bool fat_scope,
                                     mscm_syntax_node body);
 
 void mscm_free_syntax_node(mscm_syntax_node node);

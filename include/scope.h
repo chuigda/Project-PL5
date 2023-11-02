@@ -14,7 +14,7 @@ typedef struct st_mscm_value_base *mscm_value;
 typedef struct st_mscm_scope mscm_scope;
 
 /* 以 parent 为父作用域，创建一个新作用域 */
-mscm_scope *mscm_scope_new(mscm_scope *parent);
+mscm_scope *mscm_scope_new(mscm_scope *parent, bool fat);
 
 /* 向作用域中推入一个值
  * 

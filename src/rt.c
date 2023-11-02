@@ -21,7 +21,7 @@ static mscm_value runtime_eval_break(mscm_runtime *rt,
                                      mscm_break *brk,
                                      loop_context *loop_ctx);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
-static mscm_scope *runtime_push_scope(mscm_runtime *rt);
+static mscm_scope *runtime_push_scope(mscm_runtime *rt, bool fat);
 static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_push_scope_chain(mscm_runtime *rt,
                                      mscm_scope *scope);
@@ -137,11 +137,23 @@ void mscm_gc_mark_scope(mscm_runtime *rt, mscm_scope *scope) {
         }
 
         scope->gc_mark = true;
-        for (size_t i = 0; i < BUCKET_COUNT; i++) {
-            hash_item *chain = scope->buckets[i];
-            while (chain) {
-                mscm_gc_mark(rt, chain->value);
-                chain = chain->next;
+        if (scope->is_fat) {
+            mscm_scope_fat *scope_fat = (mscm_scope_fat*)scope;
+            for (size_t i = 0; i < BUCKET_COUNT; i++) {
+                hash_item *chain = scope_fat->buckets[i];
+                while (chain) {
+                    mscm_gc_mark(rt, chain->value);
+                    chain = chain->next;
+                }
+            }
+        } else {
+            mscm_scope_thin *scope_thin = (mscm_scope_thin*)scope;
+            for (size_t i = 0; i < BUCKET_COUNT; i++) {
+                hash_item *chain = scope_thin->list;
+                while (chain) {
+                    mscm_gc_mark(rt, chain->value);
+                    chain = chain->next;
+                }
             }
         }
         scope = scope->parent;
@@ -159,7 +171,7 @@ uint32_t mscm_runtime_alloc_type_id(mscm_runtime *rt) {
 mscm_runtime *runtime_new() {
     MALLOC_CHK_RET(mscm_runtime, rt);
 
-    rt->global_scope = mscm_scope_new(0);
+    rt->global_scope = mscm_scope_new(0, true);
     if (!rt->global_scope) {
         free(rt);
         return 0;
@@ -433,7 +445,8 @@ static mscm_value runtime_apply(mscm_runtime *rt,
         if (func->scope) {
             runtime_push_scope_chain(rt, func->scope);
         }
-        mscm_scope *func_scope = runtime_push_scope(rt);
+        mscm_scope *func_scope =
+            runtime_push_scope(rt, fndef->fat_param_scope);
 
         rooted_value *arg_iter = callee_arg_root.values->next;
         mscm_ident* param_iter = fndef->param_names;
@@ -454,7 +467,7 @@ static mscm_value runtime_apply(mscm_runtime *rt,
             mscm_runtime_trace_exit(rt);
         }
 
-        runtime_push_scope(rt);
+        runtime_push_scope(rt, fndef->fat_scope);
 
         stack_trace *trace = malloc(sizeof(stack_trace));
         if (trace) {
@@ -665,8 +678,8 @@ static void runtime_gc_cleanup(mscm_runtime *rt) {
     }
 }
 
-static mscm_scope *runtime_push_scope(mscm_runtime *rt) {
-    mscm_scope *scope = mscm_scope_new(runtime_current_scope(rt));
+static mscm_scope *runtime_push_scope(mscm_runtime *rt, bool fat) {
+    mscm_scope *scope = mscm_scope_new(runtime_current_scope(rt), fat);
     rt->scope_chain->chain = scope;
 
     managed_scope *item = malloc(sizeof(managed_scope));

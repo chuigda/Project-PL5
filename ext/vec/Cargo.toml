@@ -10,4 +10,3 @@ crate-type = ["cdylib"]
 
 [dependencies]
 mscm-sys = { path = "../mscm-sys-rs" }
-
