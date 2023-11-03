@@ -31,4 +31,17 @@
     (if (= (car xs) value) (break true))
     (set! 'xs (cdr xs))))
 
-(define (assert x err) (if (not x) (error err)))
+(define (map f xs)
+  (define ret '())
+  (define tail '())
+  (define node '())
+  (loop
+    (if (= xs '()) (break ret))
+    (set! 'node (cons (f (car xs)) '()))
+    (if (= ret '())
+      (begin
+        (set! 'ret node)
+        (set! 'tail node))
+      (begin
+        (set-cdr! tail node)
+        (set! 'tail node)))))
