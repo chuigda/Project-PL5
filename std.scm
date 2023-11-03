@@ -44,4 +44,11 @@
         (set! 'tail node))
       (begin
         (set-cdr! tail node)
-        (set! 'tail node)))))
+        (set! 'tail node)))
+    (set! 'xs (cdr xs))))
+
+(define (foreach f xs)
+  (loop
+    (if (= xs '()) (break))
+    (f (car xs))
+    (set! 'xs (cdr xs))))

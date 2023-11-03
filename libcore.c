@@ -206,11 +206,40 @@ MSCM_NATIVE_FN(error) {
 
     fprintf(stderr, "error: ");
     for (size_t i = 0; i < narg; i++) {
-        if (args[i]->type == MSCM_TYPE_STRING) {
+        switch (args[i]->type) {
+        case MSCM_TYPE_STRING: 
+        case MSCM_TYPE_SYMBOL: {
             mscm_string *s = (mscm_string*)args[i];
             fprintf(stderr, "%s", s->buf);
+            break;
         }
-        fputc(' ', stderr);
+        case MSCM_TYPE_INT: {
+            mscm_int *s = (mscm_int*)args[i];
+            fprintf(stderr, "%" PRId64, s->value);
+            break;
+        }
+        case MSCM_TYPE_FLOAT: {
+            mscm_float *s = (mscm_float*)args[i];
+            fprintf(stderr, "%f", s->value);
+            break;
+        }
+        case MSCM_TYPE_FUNCTION: {
+            fprintf(stderr, "<function>");
+            break;
+        }
+        case MSCM_TYPE_HANDLE: {
+            fprintf(stderr, "<handle>");
+            break;
+        }
+        case MSCM_TYPE_PAIR: {
+            fprintf(stderr, "<pair>");
+            break;
+        }
+        case MSCM_TYPE_NATIVE: {
+            fprintf(stderr, "<native>");
+            break;
+        }
+        }
     }
     putchar('\n');
 
