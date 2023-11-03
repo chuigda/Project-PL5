@@ -23,7 +23,7 @@
   - [ ] 支持 Safe Rust
 - [x] 短路逻辑运算符
 
-### 标准库 `stdlib`
+### 核心库 `libcore`
 - [x] 内建序对与列表操作
 - [x] 命令式编程：`set!`, `set-car!` 和 `set-cdr!`
 - [x] 算术运算符
@@ -33,6 +33,7 @@
 
 ### 计划中的 native 模块
 - [x] Vector
+- [x] Struct
 - [ ] File I/O
 
 ### 杂项
@@ -84,12 +85,12 @@ WIN32=1 make
 
 #### Unix
 ```bash
-LD_LIBRARY_PATH=. ./mscm libmscmstd.so sample/first-class-function.scm
+LD_LIBRARY_PATH=. ./mscm libcore.so sample/first-class-function.scm
 ```
 
 #### Windows
 ```bash
-./mscm libmscmstd.dll sample/first-class-function.scm
+./mscm libcore.dll sample/first-class-function.scm
 ```
 
 ------
@@ -100,12 +101,12 @@ LD_LIBRARY_PATH=. ./mscm libmscmstd.so sample/first-class-function.scm
 
 #### Unix
 ```bash
-LD_LIBRARY_PATH=. ./mscm libmscmstd.so --repl
+LD_LIBRARY_PATH=. ./mscm libcore.so --repl
 ```
 
 #### Windows
 ```bash
-./mscm libmscmstd.dll --repl
+./mscm libcore.dll --repl
 ```
 
 ------
@@ -114,9 +115,9 @@ LD_LIBRARY_PATH=. ./mscm libmscmstd.so --repl
 
 ## 扩展
 
-参见 `stdlib.c` 和 `ext/mscm-sys-rs` 以及 `ext/mscm-vec`。
+参见 `libcore.c`，`ext/mscm-sys-rs`，`ext/vec` 以及 `ext/struct`。
 你可以编写并构建你自己的 native 模块，然后在命令行参数中包含它，
-让 `mscm` 加载它，就像 stdlib 一样。无限可能，尽在掌控。
+让 `mscm` 加载它，就像 libcore 一样。无限可能，尽在掌控。
 
 ## 贡献与捐赠
 

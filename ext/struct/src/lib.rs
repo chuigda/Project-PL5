@@ -54,6 +54,16 @@ pub unsafe extern "C" fn mscm_load_ext(rt: *mut MSCMRuntime) {
     );
     mscm_runtime_push(rt, b"set-field!\0".as_ptr() as _, set_field_v);
     mscm_gc_add(rt, set_field_v);
+
+    let struct_dup_v = mscm_make_native_function(
+        b"struct-dup\0".as_ptr() as _,
+        struct_dup,
+        null_mut() as _,
+        None,
+        None
+    );
+    mscm_runtime_push(rt, b"struct-dup\0".as_ptr() as _, struct_dup_v);
+    mscm_gc_add(rt, struct_dup_v);
 }
 
 extern "C" fn make_struct(
@@ -192,6 +202,48 @@ extern "C" fn set_field(
 
         struct_ptr.insert(field, value_v);
         null_mut()
+    }
+}
+
+extern "C" fn struct_dup(
+    rt: *mut MSCMRuntime,
+    _scope: *mut MSCMScope,
+    _ctx: *mut c_void,
+    narg: usize,
+    args: *mut MSCMValue
+) -> MSCMValue {
+    unsafe {
+        if narg != 1 {
+            eprintln!("struct-dup: expected 2 arguments");
+            mscm_runtime_trace_exit(rt);
+        }
+
+        let struct_v = args.add(0).read();
+
+        if (*struct_v).ty != MSCMType::HANDLE {
+            eprintln!("struct-dup: expected a struct");
+            mscm_runtime_trace_exit(rt);
+        }
+
+        let struct_v = struct_v as *mut MSCMHandle;
+        if (*struct_v).user_tid != *STRUCT_TID.get().unwrap() {
+            eprintln!("struct-dup: expected a struct");
+            mscm_runtime_trace_exit(rt);
+        }
+
+        let struct_ptr = (*struct_v).ptr as *mut HashMap<String, MSCMValue>;
+        let struct_ptr = &mut *struct_ptr;
+
+        let hash_map = Box::new(struct_ptr.clone());
+        let ptr = Box::into_raw(hash_map) as *mut c_void;
+        let ret = mscm_make_handle(
+            *STRUCT_TID.get().unwrap(),
+            ptr,
+            Some(dealloc_struct),
+            Some(mark_struct)
+        );
+        mscm_gc_add(rt, ret);
+        ret
     }
 }
 
