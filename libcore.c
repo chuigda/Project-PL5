@@ -44,6 +44,8 @@ MSCM_NATIVE_FN(set);
 MSCM_NATIVE_FN(set_car);
 MSCM_NATIVE_FN(set_cdr);
 
+MSCM_NATIVE_FN(is_pair);
+
 static mscm_value g_true_v;
 
 void mscm_load_ext(mscm_runtime *rt) {
@@ -90,6 +92,9 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value set_cdr_v =
         mscm_make_native_function("set-cdr!", set_cdr, 0, 0, 0);
 
+    mscm_value is_pair_v =
+        mscm_make_native_function("pair?", is_pair, 0, 0, 0);
+
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "print", (mscm_value)print_v);
     mscm_runtime_push(rt, "println", (mscm_value)println_v);
@@ -122,6 +127,7 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "set!", (mscm_value)set_v);
     mscm_runtime_push(rt, "set-car!", (mscm_value)set_car_v);
     mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
+    mscm_runtime_push(rt, "pair?", (mscm_value)is_pair_v);
 
     mscm_gc_add(rt, display_v);
     mscm_gc_add(rt, print_v);
@@ -146,6 +152,8 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, set_v);
     mscm_gc_add(rt, set_car_v);
     mscm_gc_add(rt, set_cdr_v);
+
+    mscm_gc_add(rt, is_pair_v);
 }
 
 MSCM_NATIVE_FN(display) {
@@ -827,4 +835,24 @@ MSCM_NATIVE_FN(set_cdr) {
     mscm_pair *p = (mscm_pair*)args[0];
     p->snd = args[1];
     return 0;
+}
+
+MSCM_NATIVE_FN(is_pair) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 1) {
+        fprintf(stderr,
+                "error: pair?: expected 1 argument, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
+        return 0;
+    }
+    else {
+        return g_true_v;
+    }
 }
