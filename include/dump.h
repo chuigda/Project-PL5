@@ -2,11 +2,12 @@
 #define MINI_SCHEME_DUMP_H
 
 #include "value.h"
-#include "syntax.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct st_mscm_syntax *mscm_syntax_node;
 
 /* 输出 syntax_node 的内容到 stdout */
 void mscm_sytnax_dump(mscm_syntax_node syntax_node);

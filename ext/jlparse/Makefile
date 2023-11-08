@@ -25,11 +25,13 @@ endef
 define COMPILE
 	$(call LOG,CC,$1)
 	@$(CC) $(CFLAGS) $1 \
-		-Iconfig -Iinclude -Isrc/include \
+		-Iconfig -I../../include \
 		-fPIC -c -o $2
 endef
 
-$(SHARED_LIB_NAME): ../../$(MSCM_SHARED_LIB_NAME) jlparse.o
+HEADER_FILES = $(wildcard ../../include/*.h)
+
+$(SHARED_LIB_NAME): ../../$(MSCM_SHARED_LIB_NAME) jlparse.o $(HEADER_FILES)
 	$(call LOG,LINK,$(SHARED_LIB_NAME))
 	@$(CC) $(CFLAGS) jlparse.o \
 		-L../.. $(EXTRA_LD_SEARCH_PATH) \

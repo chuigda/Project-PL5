@@ -45,6 +45,10 @@ MSCM_NATIVE_FN(set_car);
 MSCM_NATIVE_FN(set_cdr);
 
 MSCM_NATIVE_FN(is_pair);
+MSCM_NATIVE_FN(is_int);
+MSCM_NATIVE_FN(is_float);
+MSCM_NATIVE_FN(is_string);
+MSCM_NATIVE_FN(is_symbol);
 
 static mscm_value g_true_v;
 
@@ -94,6 +98,14 @@ void mscm_load_ext(mscm_runtime *rt) {
 
     mscm_value is_pair_v =
         mscm_make_native_function("pair?", is_pair, 0, 0, 0);
+    mscm_value is_int_v =
+        mscm_make_native_function("int?", is_int, 0, 0, 0);
+    mscm_value is_float_v =
+        mscm_make_native_function("float?", is_float, 0, 0, 0);
+    mscm_value is_string_v =
+        mscm_make_native_function("string?", is_string, 0, 0, 0);
+    mscm_value is_symbol_v =
+        mscm_make_native_function("symbol?", is_symbol, 0, 0, 0);
 
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "print", (mscm_value)print_v);
@@ -127,7 +139,12 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "set!", (mscm_value)set_v);
     mscm_runtime_push(rt, "set-car!", (mscm_value)set_car_v);
     mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
+    
     mscm_runtime_push(rt, "pair?", (mscm_value)is_pair_v);
+    mscm_runtime_push(rt, "int?", (mscm_value)is_int_v);
+    mscm_runtime_push(rt, "float?", (mscm_value)is_float_v);
+    mscm_runtime_push(rt, "string?", (mscm_value)is_string_v);
+    mscm_runtime_push(rt, "symbol?", (mscm_value)is_symbol_v);
 
     mscm_gc_add(rt, display_v);
     mscm_gc_add(rt, print_v);
@@ -154,6 +171,10 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, set_cdr_v);
 
     mscm_gc_add(rt, is_pair_v);
+    mscm_gc_add(rt, is_int_v);
+    mscm_gc_add(rt, is_float_v);
+    mscm_gc_add(rt, is_string_v);
+    mscm_gc_add(rt, is_symbol_v);
 }
 
 MSCM_NATIVE_FN(display) {
@@ -866,22 +887,29 @@ MSCM_NATIVE_FN(set_cdr) {
     return 0;
 }
 
-MSCM_NATIVE_FN(is_pair) {
-    (void)scope;
-    (void)ctx;
-
-    if (narg != 1) {
-        fprintf(stderr,
-                "error: pair?: expected 1 argument, got %"
-                PRIu64 "\n",
-                narg);
-        mscm_runtime_trace_exit(rt);
+#define MSCM_MAKE_ISA_FN(FNAME, TYPE) \
+    MSCM_NATIVE_FN(FNAME) { \
+        (void)scope; \
+        (void)ctx; \
+        \
+        if (narg != 1) { \
+            fprintf(stderr, \
+                    "error: " #FNAME ": expected 1 argument, got %" \
+                    PRIu64 "\n", \
+                    narg); \
+            mscm_runtime_trace_exit(rt); \
+        } \
+        \
+        if (!args[0] || args[0]->type != TYPE) { \
+            return 0; \
+        } \
+        else { \
+            return g_true_v; \
+        } \
     }
 
-    if (!args[0] || args[0]->type != MSCM_TYPE_PAIR) {
-        return 0;
-    }
-    else {
-        return g_true_v;
-    }
-}
+MSCM_MAKE_ISA_FN(is_pair, MSCM_TYPE_PAIR);
+MSCM_MAKE_ISA_FN(is_int, MSCM_TYPE_INT);
+MSCM_MAKE_ISA_FN(is_float, MSCM_TYPE_FLOAT);
+MSCM_MAKE_ISA_FN(is_string, MSCM_TYPE_STRING);
+MSCM_MAKE_ISA_FN(is_symbol, MSCM_TYPE_SYMBOL);
