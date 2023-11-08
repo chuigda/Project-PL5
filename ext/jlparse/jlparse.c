@@ -43,6 +43,8 @@ void mscm_load_ext(mscm_runtime *rt) {
         mscm_make_string(mscm_slice_from_cstr("expr"), 0, 0);
     g_linenum_node_v =
         mscm_make_string(mscm_slice_from_cstr("linenum"), 0, 0);
+    g_expr_v->type = MSCM_TYPE_SYMBOL;
+    g_linenum_node_v->type = MSCM_TYPE_SYMBOL;
     mscm_runtime_push(rt, "expr", g_expr_v);
     mscm_runtime_push(rt, "linenum", g_linenum_node_v);
     mscm_gc_add(rt, g_expr_v);
