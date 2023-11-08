@@ -1,4 +1,5 @@
 #include <julia.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stddef.h>
 
@@ -23,6 +24,7 @@ MSCM_NATIVE_FN(parse_str);
 
 static mscm_value g_expr_v;
 static mscm_value g_linenum_node_v;
+static mscm_value g_true_v;
 
 void mscm_load_ext(mscm_runtime *rt) {
     jl_init();
@@ -45,6 +47,10 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "linenum", g_linenum_node_v);
     mscm_gc_add(rt, g_expr_v);
     mscm_gc_add(rt, g_linenum_node_v);
+
+    bool ok;
+    g_true_v = mscm_runtime_get(rt, "true", &ok);
+    assert(ok && g_true_v);
 }
 
 static char* read_to_string(char const* filename);
@@ -198,6 +204,15 @@ static mscm_value imp_jl2mscm(mscm_runtime *rt, jl_value_t *jval) {
     else if (jl_is_int8(jval)) {
         int8_t unboxed = jl_unbox_int8(jval);
         return (mscm_value)mscm_make_int(unboxed);
+    }
+    else if (jl_is_bool(jval)) {
+        bool unboxed = jl_unbox_bool(jval);
+        if (unboxed) {
+            return g_true_v;
+        }
+        else {
+            return 0;
+        }
     }
     else if (jl_typeis(jval, jl_float64_type)) {
         double unboxed = jl_unbox_float64(jval);
