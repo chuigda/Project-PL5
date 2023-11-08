@@ -12,6 +12,7 @@ core*
 .idea
 
 sample/drill.scm
+ext/jlparse/build.sh
 
 Cargo.lock
 **/target/
