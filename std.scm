@@ -52,16 +52,6 @@
     (if (= xs '()) (break))
     (f (car xs))
     (set! 'xs (cdr xs))))
-    (if (null? xs) (break ret))
-    (set! 'node (cons (f (car xs)) '()))
-    (if (null? tail)
-        (begin
-          (set! 'ret node)
-          (set! 'tail node))
-        (begin
-          (set-cdr! tail node)
-          (set! 'tail node)))
-    (set! 'xs (cdr xs))))
 
 (define (foldi f init xs)
   (loop

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+SCRIPT_PATH=$(dirname $(realpath -s $0))
+LIB_PATH=$(realpath "$SCRIPT_PATH/../lib")
+SHARE_PATH=$(realpath "$SCRIPT_PATH/../share")
+LIB_EXT_PATH=$(realpath "$LIB_PATH/ext")
+SHARE_SCM_PATH=$(realpath "$SHARE_PATH/scm")
+
+LD_LIBRARY_PATH="$LIB_PATH:$LD_LIBRRY_PATH" $SCRIPT_PATH/mscm \
+    $LIB_EXT_PATH/libcore.so \
+    $LIB_EXT_PATH/libstruct.so \
+    $LIB_EXT_PATH/libvec.so \
+    $SHARE_SCM_PATH/std.scm \
+    $@
