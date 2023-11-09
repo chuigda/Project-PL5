@@ -17,6 +17,9 @@ chmod 755 dist/bin/pl5
 cp libmscm.so dist/lib
 cp libcore.so dist/lib/ext
 cp std.scm dist/share/scm
+for file in `ls include/*`; do
+    cp $file dist/$file;
+done
 
 if ! command -v cargo &> /dev/null
 then
