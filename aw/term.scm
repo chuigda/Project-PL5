@@ -65,8 +65,8 @@
     (exists? (lambda (t) (occurs-in-type? type-var t))
              type-list))
 
-(define bool-type (make-type-op "bool" null))
+(define bool-type (make-type-op "bool" '()))
 
-(define int-type (make-type-op "int" null))
+(define int-type (make-type-op "int" '()))
 
 (define (make-func-type from into) (new-type-op "func" (list from into)))
