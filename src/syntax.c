@@ -55,13 +55,35 @@ mscm_syntax_node mscm_make_begin(char const *file,
     return (mscm_syntax_node)ret;
 }
 
+mscm_syntax_node mscm_make_loop(char const *file,
+                                size_t line,
+                                mscm_syntax_node content) {
+    MALLOC_CHK_RET(mscm_loop, ret);
+    MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_LOOP, file, line);
+    ret->content = content;
+    return (mscm_syntax_node)ret;
+}
+
+mscm_syntax_node mscm_make_break(char const *file,
+                                 size_t line,
+                                 mscm_syntax_node content) {
+    MALLOC_CHK_RET(mscm_loop, ret);
+    MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_BREAK, file, line);
+    ret->content = content;
+    return (mscm_syntax_node)ret;
+}
+
 mscm_syntax_node mscm_make_lambda(char const *file,
                                   size_t line,
                                   mscm_ident *param_names,
+                                  bool fat_param_scope,
+                                  bool fat_scope,
                                   mscm_syntax_node body) {
     MALLOC_CHK_RET(mscm_func_def, ret);
     MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_LAMBDA, file, line);
     ret->param_names = param_names;
+    ret->fat_param_scope = fat_param_scope;
+    ret->fat_scope = fat_scope;
     ret->body = body;
     return (mscm_syntax_node)ret;
 }
@@ -110,6 +132,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
                                     size_t line,
                                     mscm_slice func_name,
                                     mscm_ident *param_names,
+                                    bool fat_param_scope,
+                                    bool fat_scope,
                                     mscm_syntax_node body) {
     mscm_func_def *ret =
         malloc(sizeof(mscm_func_def) + func_name.len + 1);
@@ -119,6 +143,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
 
     MSCM_SYNTAX_NODE_COMMON_INIT(ret, MSCM_SYN_DEFUN, file, line);
     ret->param_names = param_names;
+    ret->fat_param_scope = fat_param_scope;
+    ret->fat_scope = fat_scope;
     ret->body = body;
     strncpy(ret->func_name, func_name.start, func_name.len);
     ret->func_name[func_name.len] = 0;
@@ -142,12 +168,15 @@ void mscm_free_syntax_node(mscm_syntax_node node) {
                 mscm_free_syntax_node(apply->args);
                 break;
             }
-            case MSCM_SYN_BEGIN: {
+            case MSCM_SYN_BEGIN:
+            case MSCM_SYN_LOOP:
+            case MSCM_SYN_BREAK: {
                 mscm_begin *begin = (mscm_begin*)current;
                 mscm_free_syntax_node(begin->content);
                 break;
             }
-            case MSCM_SYN_LAMBDA: case MSCM_SYN_DEFUN: {
+            case MSCM_SYN_LAMBDA:
+            case MSCM_SYN_DEFUN: {
                 mscm_func_def *fndef = (mscm_func_def*)current;
                 mscm_ident *param_names = fndef->param_names;
                 mscm_free_syntax_node((mscm_syntax_node)param_names);

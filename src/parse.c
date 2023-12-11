@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "parse.h"
@@ -25,6 +26,10 @@ static mscm_syntax_node parse_cond(tokenise_ctx *tokeniser,
                                    uint8_t rparen_kind);
 static mscm_syntax_node parse_if(tokenise_ctx *tokeniser,
                                  uint8_t rparen_kind);
+static mscm_syntax_node parse_loop(tokenise_ctx *tokeniser,
+                                   uint8_t rparen_kind);
+static mscm_syntax_node parse_break(tokenise_ctx *tokeniser,
+                                    uint8_t rparen_kind);
 static mscm_value parse_quoted_list(tokenise_ctx *tokeniser, bool *ok);
 static mscm_value parse_quoted_list_impl(tokenise_ctx *tokeniser,
                                          uint8_t rparen_kind,
@@ -32,6 +37,8 @@ static mscm_value parse_quoted_list_impl(tokenise_ctx *tokeniser,
 static mscm_ident* parse_ident_list(tokenise_ctx *tokeniser);
 static void unexpected_token(token t);
 static char const *tk_string(uint8_t tk);
+static size_t count_define(mscm_syntax_node node);
+static size_t count_ident(mscm_ident *ident);
 
 mscm_syntax_node mscm_parse(char const *file, char const *content) {
     tokenise_ctx ctx = (tokenise_ctx) {
@@ -143,6 +150,12 @@ static mscm_syntax_node parse_list_alike(tokenise_ctx *tokeniser,
             return 0;
         }
         return mscm_make_begin(begin.file, begin.line, body);
+    }
+    else if (token_is_ident(t, "loop")) {
+        return parse_loop(tokeniser, rparen_kind);
+    }
+    else if (token_is_ident(t, "break")) {
+        return parse_break(tokeniser, rparen_kind);
     }
     else {
         mscm_syntax_node callee = parse_item(tokeniser);
@@ -277,8 +290,14 @@ static mscm_syntax_node parse_defun(tokenise_ctx *tokeniser,
         return 0;
     }
 
+    size_t paramcnt = count_ident(param_names);
+    bool fat_param_scope = paramcnt > 8;
+    size_t definecnt = count_define(body);
+    bool fat_scope = definecnt > 8;
+
     return mscm_make_func_def(tokeniser->file, tokeniser->line,
-                              fn_name.value.s, param_names, body);
+                              fn_name.value.s, param_names,
+                              fat_param_scope, fat_scope, body);
 }
 
 static mscm_syntax_node parse_lambda(tokenise_ctx *tokeniser,
@@ -308,8 +327,14 @@ static mscm_syntax_node parse_lambda(tokenise_ctx *tokeniser,
         return 0;
     }
 
+    size_t paramcnt = count_ident(param_names);
+    bool fat_param_scope = paramcnt > 8;
+    size_t definecnt = count_define(body);
+    bool fat_scope = definecnt > 8;
+
     return mscm_make_lambda(lambda.file, lambda.line,
-                            param_names, body);
+                            param_names, fat_param_scope, fat_scope,
+                            body);
 }
 
 static mscm_syntax_node parse_cond(tokenise_ctx *tokeniser,
@@ -419,6 +444,46 @@ static mscm_syntax_node parse_if(tokenise_ctx *tokeniser,
     }
 
     return mscm_make_if(if_.file, if_.line, cond, then, otherwise);
+}
+
+static mscm_syntax_node parse_loop(tokenise_ctx *tokeniser,
+                                   uint8_t rparen_kind) {
+    token loop = get_token(tokeniser);
+    assert(token_is_ident(loop, "loop"));
+
+    mscm_syntax_node body = parse_item_list(tokeniser, rparen_kind, 0);
+    if (!body) {
+        err_print(loop.file, loop.line,
+                  "expected loop body");
+        return 0;
+    }
+
+    return mscm_make_loop(loop.file, loop.line, body);
+}
+
+static mscm_syntax_node parse_break(tokenise_ctx *tokeniser,
+                                    uint8_t rparen_kind) {
+    token break_ = get_token(tokeniser);
+    assert(token_is_ident(break_, "break"));
+
+    if (peek_token(tokeniser).tk == rparen_kind) {
+        get_token(tokeniser);
+        return mscm_make_break(break_.file, break_.line, 0);
+    } else {
+        mscm_syntax_node value = parse_item(tokeniser);
+        if (!value) {
+            return 0;
+        }
+
+        token rp = get_token(tokeniser);
+        if (rp.tk != rparen_kind) {
+            unexpected_token(rp);
+            mscm_free_syntax_node(value);
+            return 0;
+        }
+
+        return mscm_make_break(break_.file, break_.line, value);
+    }
 }
 
 static mscm_value parse_quoted_list(tokenise_ctx *tokeniser, bool *ok) {
@@ -560,4 +625,73 @@ static char const *tk_string(uint8_t tk) {
             assert(false);
             return "unknown token";
     }
+}
+
+static size_t count_define(mscm_syntax_node node) {
+    size_t ret = 0;
+    while (node) {
+        switch (node->kind) {
+            case MSCM_SYN_DEFVAR: {
+                ++ret;
+                
+                mscm_defvar *defvar = (mscm_defvar*)node;
+                ret += count_define(defvar->init);
+                break;
+            }
+            case MSCM_SYN_DEFUN:
+            case MSCM_SYN_LAMBDA: {
+                ++ret;
+
+                mscm_func_def *defun = (mscm_func_def*)node;
+                ret += count_define(defun->body);
+                break;
+            }
+            case MSCM_SYN_BEGIN:
+            case MSCM_SYN_LOOP:
+            case MSCM_SYN_BREAK: {
+                mscm_begin *begin = (mscm_begin*)node;
+                ret += count_define(begin->content);
+                break;
+            }
+            case MSCM_SYN_COND: {
+                mscm_cond *cond = (mscm_cond*)node;
+                ret += count_define(cond->cond_list);
+                ret += count_define(cond->then_list);
+                break;
+            }
+            case MSCM_SYN_IF: {
+                mscm_if *if_ = (mscm_if*)node;
+                ret += count_define(if_->then);
+                ret += count_define(if_->otherwise);
+                break;
+            }
+            case MSCM_SYN_APPLY: {
+                mscm_apply *apply = (mscm_apply*)node;
+                ret += count_define(apply->callee);
+                ret += count_define(apply->args);
+                break;
+            }
+            case MSCM_SYN_VALUE:
+            case MSCM_SYN_IDENT: {
+                break;
+            }
+            default: {
+                assert(false);
+                break;
+            }
+        }
+
+        node = node->next;
+    }
+
+    return ret;
+}
+
+static size_t count_ident(mscm_ident *ident) {
+    size_t ret = 0;
+    while (ident) {
+        ++ret;
+        ident = (mscm_ident*)ident->next;
+    }
+    return ret;
 }

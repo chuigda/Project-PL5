@@ -128,7 +128,18 @@ static token tokenise_string(tokenise_ctx *ctx) {
                           "unterminated string literal");
                 return TOKEN0(TK_EOI);
             }
-            ctx->cursor += 2;
+            else if (ctx->cursor[1] == 'x') {
+                if (!isxdigit(ctx->cursor[2]) ||
+                    !isxdigit(ctx->cursor[3])) {
+                    err_print(ctx->file, ctx->line,
+                              "invalid hex escape sequence");
+                    return TOKEN0(TK_EOI);
+                }
+                ctx->cursor += 4;
+            }
+            else {
+                ctx->cursor += 2;
+            }
         }
         else {
             ctx->cursor += 1;

@@ -12,6 +12,7 @@ core*
 .idea
 
 sample/drill.scm
+dist
 
 Cargo.lock
 **/target/

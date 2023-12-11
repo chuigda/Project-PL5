@@ -47,10 +47,10 @@ void mscm_gc_toggle(mscm_runtime *rt, bool enable);
 void mscm_gc_add(mscm_runtime *rt, mscm_value value);
 
 /* 将一个值标记为可达 */
-void mscm_gc_mark(mscm_value value);
+void mscm_gc_mark(mscm_runtime *rt, mscm_value value);
 
 /* 将一个作用域连同其中所有值标记为可达 */
-void mscm_gc_mark_scope(mscm_scope *scope);
+void mscm_gc_mark_scope(mscm_runtime *rt, mscm_scope *scope);
 
 /* 分配一个类型 ID 供 handle 使用，参见 mscm_handle */
 uint32_t mscm_runtime_alloc_type_id(mscm_runtime *rt);

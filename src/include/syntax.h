@@ -1,6 +1,7 @@
 #ifndef MINI_SCHEME_SYNTAX_H
 #define MINI_SCHEME_SYNTAX_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -23,10 +24,12 @@ enum {
     MSCM_SYN_LAMBDA  = 4,
     MSCM_SYN_COND    = 5,
     MSCM_SYN_IF      = 6,
+    MSCM_SYN_LOOP    = 7,
+    MSCM_SYN_BREAK   = 8,
 
-    /** syntax nodes that are not expressions */
-    MSCM_SYN_DEFVAR  = 7,
-    MSCM_SYN_DEFUN   = 8
+    /* syntax nodes that are not expressions */
+    MSCM_SYN_DEFVAR  = 100,
+    MSCM_SYN_DEFUN   = 101
 };
 
 typedef struct st_mscm_syntax {
@@ -46,7 +49,7 @@ typedef struct {
 typedef struct {
     MSCM_SYNTAX_NODE_COMMON
     mscm_syntax_node content;
-} mscm_begin;
+} mscm_begin, mscm_loop, mscm_break;
 
 typedef struct {
     MSCM_SYNTAX_NODE_COMMON
@@ -78,6 +81,8 @@ typedef struct st_mscm_func_def{
     MSCM_SYNTAX_NODE_COMMON
     mscm_ident *param_names;
     mscm_syntax_node body;
+    bool fat_param_scope;
+    bool fat_scope;
     char func_name[];
 } mscm_func_def;
 
@@ -98,9 +103,19 @@ mscm_syntax_node mscm_make_begin(char const *file,
                                  size_t line,
                                  mscm_syntax_node content);
 
+mscm_syntax_node mscm_make_loop(char const *file,
+                                size_t line,
+                                mscm_syntax_node content);
+
+mscm_syntax_node mscm_make_break(char const *file,
+                                 size_t line,
+                                 mscm_syntax_node content);
+
 mscm_syntax_node mscm_make_lambda(char const *file,
                                   size_t line,
                                   mscm_ident *param_names,
+                                  bool fat_param_scope,
+                                  bool fat_scope,
                                   mscm_syntax_node body);
 
 mscm_syntax_node mscm_make_cond(char const *file,
@@ -123,6 +138,8 @@ mscm_syntax_node mscm_make_func_def(char const *file,
                                     size_t line,
                                     mscm_slice func_name,
                                     mscm_ident *param_names,
+                                    bool fat_param_scope,
+                                    bool fat_scope,
                                     mscm_syntax_node body);
 
 void mscm_free_syntax_node(mscm_syntax_node node);

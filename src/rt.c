@@ -13,9 +13,21 @@
 #include "syntax.h"
 #include "util.h"
 
-static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply);
+static mscm_value runtime_apply(mscm_runtime *rt,
+                                mscm_apply *apply,
+                                loop_context *loop_ctx);
+static mscm_value runtime_eval_loop(mscm_runtime *rt, mscm_loop *loop);
+static mscm_value runtime_eval_break(mscm_runtime *rt,
+                                     mscm_break *brk,
+                                     loop_context *loop_ctx);
+static mscm_value runtime_eval_and(mscm_runtime *rt,
+                                   mscm_apply *apply,
+                                   loop_context *loop_ctx);
+static mscm_value runtime_eval_or(mscm_runtime *rt,
+                                  mscm_apply *apply,
+                                  loop_context *loop_ctx);
 static mscm_scope *runtime_current_scope(mscm_runtime *rt);
-static mscm_scope *runtime_push_scope(mscm_runtime *rt);
+static mscm_scope *runtime_push_scope(mscm_runtime *rt, bool fat);
 static void runtime_pop_scope(mscm_runtime *rt);
 static void runtime_push_scope_chain(mscm_runtime *rt,
                                      mscm_scope *scope);
@@ -26,6 +38,13 @@ static void runtime_remove_rooted_group(mscm_runtime *rt,
                                         rooted_group *group);
 static bool node_is_ident(mscm_syntax_node node, char const *ident);
 static void runtime_gc_collect(mscm_runtime *rt);
+static void runtime_gc_premark(mscm_runtime *rt);
+static void runtime_gc_mark(mscm_runtime *rt);
+static void runtime_gc_cleanup(mscm_runtime *rt);
+static void imp_gc_mark(mscm_runtime *rt, mscm_value value);
+
+static mscm_string g_and_proc_sym = { MSCM_TYPE_SYMBOL, 1, 4, "<and>" };
+static mscm_string g_or_proc_sym = { MSCM_TYPE_SYMBOL, 1, 3, "<or>" };
 
 /* public APIs */
 
@@ -97,7 +116,7 @@ void mscm_gc_add(mscm_runtime *rt, mscm_value value) {
     rt->alloc_count += 1;
 }
 
-void mscm_gc_mark(mscm_value value) {
+void mscm_gc_mark(mscm_runtime *rt, mscm_value value) {
     if (!value) {
         return;
     }
@@ -107,36 +126,19 @@ void mscm_gc_mark(mscm_value value) {
     }
 
     value->gc_mark = true;
-    switch (value->type) {
-        case MSCM_TYPE_PAIR: {
-            mscm_pair *pair = (mscm_pair*)value;
-            mscm_gc_mark(pair->fst);
-            mscm_gc_mark(pair->snd);
-            break;
-        }
-        case MSCM_TYPE_FUNCTION: {
-            mscm_function *func = (mscm_function*)value;
-            mscm_gc_mark_scope(func->scope);
-            break;
-        }
-        case MSCM_TYPE_HANDLE: {
-            mscm_handle *handle = (mscm_handle*)value;
-            if (handle->marker) {
-                handle->marker(handle->ptr);
-            }
-            break;
-        }
-        case MSCM_TYPE_NATIVE: {
-            mscm_native_function *native = (mscm_native_function*)value;
-            if (native->ctx_marker) {
-                native->ctx_marker(native->ctx);
-            }
-            break;
-        }
+    managed_value *queue_node = malloc(sizeof(managed_value));
+    queue_node->next = NULL;
+    queue_node->value = value;
+    if (!rt->value_queue) {
+        rt->value_queue = queue_node;
+        rt->value_queue_tail = queue_node;
+    } else {
+        rt->value_queue_tail->next = queue_node;
+        rt->value_queue_tail = queue_node;
     }
 }
 
-void mscm_gc_mark_scope(mscm_scope *scope) {
+void mscm_gc_mark_scope(mscm_runtime *rt, mscm_scope *scope) {
     while (scope) {
         if (scope->gc_mark) {
             scope = scope->parent;
@@ -144,11 +146,23 @@ void mscm_gc_mark_scope(mscm_scope *scope) {
         }
 
         scope->gc_mark = true;
-        for (size_t i = 0; i < BUCKET_COUNT; i++) {
-            hash_item *chain = scope->buckets[i];
-            while (chain) {
-                mscm_gc_mark(chain->value);
-                chain = chain->next;
+        if (scope->is_fat) {
+            mscm_scope_fat *scope_fat = (mscm_scope_fat*)scope;
+            for (size_t i = 0; i < BUCKET_COUNT; i++) {
+                hash_item *chain = scope_fat->buckets[i];
+                while (chain) {
+                    mscm_gc_mark(rt, chain->value);
+                    chain = chain->next;
+                }
+            }
+        } else {
+            mscm_scope_thin *scope_thin = (mscm_scope_thin*)scope;
+            for (size_t i = 0; i < BUCKET_COUNT; i++) {
+                hash_item *chain = scope_thin->list;
+                while (chain) {
+                    mscm_gc_mark(rt, chain->value);
+                    chain = chain->next;
+                }
             }
         }
         scope = scope->parent;
@@ -166,7 +180,7 @@ uint32_t mscm_runtime_alloc_type_id(mscm_runtime *rt) {
 mscm_runtime *runtime_new() {
     MALLOC_CHK_RET(mscm_runtime, rt);
 
-    rt->global_scope = mscm_scope_new(0);
+    rt->global_scope = mscm_scope_new(0, true);
     if (!rt->global_scope) {
         free(rt);
         return 0;
@@ -187,8 +201,13 @@ mscm_runtime *runtime_new() {
     rt->scope_alloc_count = 0;
     rt->gc_pool = 0;
     rt->scope_pool = 0;
+    rt->value_queue = 0;
+    rt->value_queue_tail = 0;
     rt->trace = 0;
     rt->next_type_id = 0;
+
+    mscm_runtime_push(rt, "and", (mscm_value)&g_and_proc_sym);
+    mscm_runtime_push(rt, "or", (mscm_value)&g_or_proc_sym);
     return rt;
 }
 
@@ -223,7 +242,7 @@ void runtime_free(mscm_runtime *rt) {
 mscm_value runtime_eval_entry(mscm_runtime *rt,
                               mscm_syntax_node node) {
     if (setjmp(rt->err_jmp) == 0) {
-        return runtime_eval(rt, node, true);
+        return runtime_eval(rt, node, true, 0);
     }
 
     while (rt->scope_chain->parent) {
@@ -251,7 +270,8 @@ mscm_value runtime_eval_entry(mscm_runtime *rt,
 
 mscm_value runtime_eval(mscm_runtime *rt,
                         mscm_syntax_node node,
-                        bool multiple) {
+                        bool multiple,
+                        loop_context *loop_ctx) {
     mscm_value ret = 0;
     while (node) {
         switch (node->kind) {
@@ -276,21 +296,26 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 mscm_defvar *defvar = (mscm_defvar*)node;
                 mscm_scope *scope = runtime_current_scope(rt);
                 bool defined;
-                mscm_scope_get_current(scope, defvar->var_name, &defined);
+                mscm_scope_get_current(scope,
+                                       defvar->var_name,
+                                       &defined);
                 if (defined) {
                     err_printf(node->file, node->line,
                                "%s already defined in current scope",
                                defvar->var_name);
                     mscm_runtime_trace_exit(rt);
                 }
-                mscm_value value = runtime_eval(rt, defvar->init, true);
+                mscm_value value = runtime_eval(rt,
+                                                defvar->init,
+                                                true,
+                                                loop_ctx);
                 mscm_scope_push(scope, defvar->var_name, value);
                 ret = 0;
                 break;
             }
             case MSCM_SYN_BEGIN: {
                 mscm_begin *begin = (mscm_begin*)node;
-                ret = runtime_eval(rt, begin->content, true);
+                ret = runtime_eval(rt, begin->content, true, loop_ctx);
                 break;
             }
             case MSCM_SYN_LAMBDA: case MSCM_SYN_DEFUN: {
@@ -325,14 +350,14 @@ mscm_value runtime_eval(mscm_runtime *rt,
                 while (cond) {
                     if (node_is_ident(cond, "otherwise") ||
                         node_is_ident(cond, "else")) {
-                        ret = runtime_eval(rt, then, false);
+                        ret = runtime_eval(rt, then, false, loop_ctx);
                         goto cond_hit;
                     }
 
                     mscm_value cond_result =
-                        runtime_eval(rt, cond, false);
+                        runtime_eval(rt, cond, false, loop_ctx);
                     if (mscm_value_is_true(cond_result)) {
-                        ret = runtime_eval(rt, then, false);
+                        ret = runtime_eval(rt, then, false, loop_ctx);
                         goto cond_hit;
                     }
 
@@ -346,17 +371,33 @@ mscm_value runtime_eval(mscm_runtime *rt,
             case MSCM_SYN_IF: {
                 mscm_if *if_node = (mscm_if*)node;
                 mscm_value cond_result =
-                    runtime_eval(rt, if_node->cond, true);
+                    runtime_eval(rt, if_node->cond, true, loop_ctx);
                 if (mscm_value_is_true(cond_result)) {
-                    ret = runtime_eval(rt, if_node->then, true);
+                    ret = runtime_eval(rt,
+                                       if_node->then,
+                                       true,
+                                       loop_ctx);
                 }
                 else if (if_node->otherwise) {
-                    ret = runtime_eval(rt, if_node->otherwise, true);
+                    ret = runtime_eval(rt,
+                                       if_node->otherwise,
+                                       true,
+                                       loop_ctx);
                 }
                 break;
             }
+            case MSCM_SYN_LOOP: {
+                mscm_loop *loop = (mscm_loop*)node;
+                ret = runtime_eval_loop(rt, loop);
+                break;
+            }
+            case MSCM_SYN_BREAK: {
+                mscm_break *brk = (mscm_break*)node;
+                ret = runtime_eval_break(rt, brk, loop_ctx);
+                break;
+            }
             case MSCM_SYN_APPLY: {
-                ret = runtime_apply(rt, (mscm_apply*)node);
+                ret = runtime_apply(rt, (mscm_apply*)node, loop_ctx);
                 break;
             }
         }
@@ -374,15 +415,27 @@ mscm_value runtime_eval(mscm_runtime *rt,
 /* internals */
 
 /* TODO works for now but needs heavy refactor */
-static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
-    mscm_value callee = runtime_eval(rt, apply->callee, true);
+static mscm_value runtime_apply(mscm_runtime *rt,
+                                mscm_apply *apply,
+                                loop_context *loop_ctx) {
+    mscm_value callee = runtime_eval(rt, apply->callee, true, loop_ctx);
     if (!callee ||
         (callee->type != MSCM_TYPE_FUNCTION &&
-         callee->type != MSCM_TYPE_NATIVE)) {
+         callee->type != MSCM_TYPE_NATIVE &&
+         callee != (mscm_value)&g_and_proc_sym &&
+         callee != (mscm_value)&g_or_proc_sym)) {
         err_printf(apply->callee->file, apply->callee->line,
                    "%s is not a function",
                    mscm_value_type_name(callee));
         mscm_runtime_trace_exit(rt);
+    }
+
+    if (callee == (mscm_value)&g_and_proc_sym) {
+        return runtime_eval_and(rt, apply, loop_ctx);
+    }
+    
+    if (callee == (mscm_value)&g_or_proc_sym) {
+        return runtime_eval_or(rt, apply, loop_ctx);
     }
 
     rooted_value rooted_callee = { 0, callee };
@@ -392,7 +445,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     rooted_value *current_root = callee_arg_root.values;
     mscm_syntax_node arg = apply->args;
     while (arg) {
-        mscm_value arg_value = runtime_eval(rt, arg, false);
+        mscm_value arg_value = runtime_eval(rt, arg, false, loop_ctx);
         rooted_value *arg_root = malloc(sizeof(rooted_value));
         if (!arg_root) {
             err_print(arg->file, arg->line, "out of memory");
@@ -414,7 +467,8 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
         if (func->scope) {
             runtime_push_scope_chain(rt, func->scope);
         }
-        mscm_scope *func_scope = runtime_push_scope(rt);
+        mscm_scope *func_scope =
+            runtime_push_scope(rt, fndef->fat_param_scope);
 
         rooted_value *arg_iter = callee_arg_root.values->next;
         mscm_ident* param_iter = fndef->param_names;
@@ -435,7 +489,7 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             mscm_runtime_trace_exit(rt);
         }
 
-        runtime_push_scope(rt);
+        runtime_push_scope(rt, fndef->fat_scope);
 
         stack_trace *trace = malloc(sizeof(stack_trace));
         if (trace) {
@@ -446,7 +500,8 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
             trace->native_fn_name = 0;
             rt->trace = trace;
         }
-        mscm_value ret = runtime_eval(rt, fndef->body, true);
+
+        mscm_value ret = runtime_eval(rt, fndef->body, true, 0);
         if (trace) {
             rt->trace = trace->next;
             free(trace);
@@ -510,6 +565,65 @@ static mscm_value runtime_apply(mscm_runtime *rt, mscm_apply *apply) {
     }
 }
 
+static mscm_value runtime_eval_loop(mscm_runtime *rt, mscm_loop *loop) {
+    loop_context loop_ctx;
+    loop_ctx.break_value = 0;
+    if (setjmp(loop_ctx.loop_jmp_buf) == 0) {
+        loop_ctx.break_value = 0;
+        while (true) {
+            runtime_eval(rt, loop->content, true, &loop_ctx);
+        }
+    } else {
+        return loop_ctx.break_value;
+    }
+}
+
+static mscm_value runtime_eval_break(mscm_runtime *rt,
+                                     mscm_break *brk,
+                                     loop_context *loop_ctx) {
+    if (!loop_ctx) {
+        err_print(brk->file, brk->line, "break outside loop");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (brk->content) {
+        loop_ctx->break_value = 
+            runtime_eval(rt, brk->content, false, loop_ctx);
+    }
+
+    longjmp(loop_ctx->loop_jmp_buf, 1);
+}
+
+static mscm_value runtime_eval_and(mscm_runtime *rt,
+                                   mscm_apply *apply,
+                                   loop_context *loop_ctx) {
+    mscm_syntax_node iter = apply->args;
+    mscm_value result = 0;
+    while (iter) {
+        result = runtime_eval(rt, iter, false, loop_ctx);
+        if (!mscm_value_is_true(result)) {
+            return 0;
+        }
+        iter = iter->next;
+    }
+    return result;
+}
+
+static mscm_value runtime_eval_or(mscm_runtime *rt,
+                                  mscm_apply *apply,
+                                  loop_context *loop_ctx) {
+    mscm_syntax_node iter = apply->args;
+    mscm_value result = 0;
+    while (iter) {
+        result = runtime_eval(rt, iter, false, loop_ctx);
+        if (mscm_value_is_true(result)) {
+            return result;
+        }
+        iter = iter->next;
+    }
+    return 0;
+}
+
 static mscm_scope *runtime_current_scope(mscm_runtime *rt) {
     return rt->scope_chain->chain;
 }
@@ -520,6 +634,15 @@ static bool node_is_ident(mscm_syntax_node node, char const *ident) {
 }
 
 static void runtime_gc_collect(mscm_runtime *rt) {
+    runtime_gc_premark(rt);
+    runtime_gc_mark(rt);
+    runtime_gc_cleanup(rt);
+
+    rt->alloc_count = 0;
+    rt->scope_alloc_count = 0;
+}
+
+static void runtime_gc_premark(mscm_runtime *rt) {
     managed_value *iter = rt->gc_pool;
     while (iter) {
         iter->value->gc_mark = false;
@@ -532,12 +655,14 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         scope_iter->scope->gc_mark = false;
         scope_iter = scope_iter->next;
     }
+}
 
+static void runtime_gc_mark(mscm_runtime *rt) {
     rooted_group *group_iter = rt->rooted_groups;
     while (group_iter) {
         rooted_value *value_iter = group_iter->values;
         while (value_iter) {
-            mscm_gc_mark(value_iter->value);
+            mscm_gc_mark(rt, value_iter->value);
             value_iter = value_iter->next;
         }
         group_iter = group_iter->next;
@@ -545,11 +670,24 @@ static void runtime_gc_collect(mscm_runtime *rt) {
 
     scope_chain_node *scope_chain_iter = rt->scope_chain;
     while (scope_chain_iter) {
-        mscm_gc_mark_scope(scope_chain_iter->chain);
+        mscm_gc_mark_scope(rt, scope_chain_iter->chain);
         scope_chain_iter = scope_chain_iter->parent;
     }
 
-    iter = rt->gc_pool;
+    while (rt->value_queue) {
+        managed_value *value = rt->value_queue;
+        rt->value_queue = rt->value_queue->next;
+        if (!rt->value_queue) {
+            rt->value_queue_tail = 0;
+        }
+
+        imp_gc_mark(rt, value->value);
+        free(value);
+    }
+}
+
+static void runtime_gc_cleanup(mscm_runtime *rt) {
+    managed_value *iter = rt->gc_pool;
     while (iter && !iter->value->gc_mark) {
         managed_value *current = iter;
         iter = iter->next;
@@ -570,7 +708,7 @@ static void runtime_gc_collect(mscm_runtime *rt) {
         }
     }
 
-    scope_iter = rt->scope_pool;
+    managed_scope *scope_iter = rt->scope_pool;
     while (scope_iter && !scope_iter->scope->gc_mark) {
         managed_scope *current = scope_iter;
         scope_iter = scope_iter->next;
@@ -590,13 +728,10 @@ static void runtime_gc_collect(mscm_runtime *rt) {
             scope_iter = scope_iter->next;
         }
     }
-
-    rt->alloc_count = 0;
-    rt->scope_alloc_count = 0;
 }
 
-static mscm_scope *runtime_push_scope(mscm_runtime *rt) {
-    mscm_scope *scope = mscm_scope_new(runtime_current_scope(rt));
+static mscm_scope *runtime_push_scope(mscm_runtime *rt, bool fat) {
+    mscm_scope *scope = mscm_scope_new(runtime_current_scope(rt), fat);
     rt->scope_chain->chain = scope;
 
     managed_scope *item = malloc(sizeof(managed_scope));
@@ -657,4 +792,34 @@ static void runtime_remove_rooted_group(mscm_runtime *rt,
     }
 
     assert(false);
+}
+
+static void imp_gc_mark(mscm_runtime *rt, mscm_value value) {
+    switch (value->type) {
+        case MSCM_TYPE_PAIR: {
+            mscm_pair *pair = (mscm_pair*)value;
+            mscm_gc_mark(rt, pair->fst);
+            mscm_gc_mark(rt, pair->snd);
+            break;
+        }
+        case MSCM_TYPE_FUNCTION: {
+            mscm_function *func = (mscm_function*)value;
+            mscm_gc_mark_scope(rt, func->scope);
+            break;
+        }
+        case MSCM_TYPE_HANDLE: {
+            mscm_handle *handle = (mscm_handle*)value;
+            if (handle->marker) {
+                handle->marker(rt, handle->ptr);
+            }
+            break;
+        }
+        case MSCM_TYPE_NATIVE: {
+            mscm_native_function *native = (mscm_native_function*)value;
+            if (native->ctx_marker) {
+                native->ctx_marker(rt, native->ctx);
+            }
+            break;
+        }
+    }
 }

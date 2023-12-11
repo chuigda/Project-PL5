@@ -15,11 +15,24 @@ typedef struct st_hash_item {
 
 enum { BUCKET_COUNT = 32 };
 
+#define SCOPE_COMMON \
+    mscm_scope *parent; \
+    bool gc_mark; \
+    bool is_fat;
+
 struct st_mscm_scope {
-    mscm_scope *parent;
-    hash_item *buckets[BUCKET_COUNT];
-    bool gc_mark;
+    SCOPE_COMMON
 };
+
+typedef struct st_mscm_scope_thin {
+    SCOPE_COMMON
+    hash_item *list;
+} mscm_scope_thin;
+
+typedef struct st_mscm_scope_fat {
+    SCOPE_COMMON
+    hash_item *buckets[BUCKET_COUNT];
+} mscm_scope_fat;
 
 void mscm_scope_free(mscm_scope *scope);
 

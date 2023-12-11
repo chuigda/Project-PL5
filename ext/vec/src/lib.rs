@@ -73,6 +73,16 @@ pub unsafe extern "C" fn mscm_load_ext(rt: *mut MSCMRuntime) {
     );
     mscm_runtime_push(rt, b"vector-set!\0".as_ptr() as _, vector_set_v);
     mscm_gc_add(rt, vector_set_v);
+
+    let vector_dup_v = mscm_make_native_function(
+        b"vector-dup\0".as_ptr() as _,
+        vector_dup,
+        null_mut() as _,
+        None,
+        None
+    );
+    mscm_runtime_push(rt, b"vector-dup\0".as_ptr() as _, vector_dup_v);
+    mscm_gc_add(rt, vector_dup_v);
 }
 
 extern "C" fn make_vector(
@@ -265,17 +275,61 @@ extern "C" fn vector_set(
     }
 }
 
-extern "C" fn dealloc_vec(_ptr: *mut c_void) {
+extern "C" fn vector_dup(
+    rt: *mut MSCMRuntime,
+    _scope: *mut MSCMScope,
+    _ctx: *mut c_void,
+    narg: usize,
+    args: *mut MSCMValue
+) -> MSCMValue {
+    let vector_tid = *VECTOR_TID.get().unwrap();
+
     unsafe {
-        let _vec = Box::from_raw(_ptr as *mut Vec<MSCMValue>);
+        if narg != 1 {
+            eprintln!("vector-dup: expected 1 argument, got {}", narg);
+            mscm_runtime_trace_exit(rt)
+        }
+
+        let arg0 = *args.offset(0);
+        if (*arg0).ty != MSCMType::HANDLE {
+            eprintln!("vector-dup: expected handle, got {}", value_type_string(arg0));
+            mscm_runtime_trace_exit(rt)
+        }
+
+        let handle = arg0 as *mut MSCMHandle;
+        if (*handle).user_tid != vector_tid {
+            eprintln!("vector-dup: expected vector tid = {}, got tid={}",
+                      vector_tid,
+                      (*handle).user_tid);
+            mscm_runtime_trace_exit(rt)
+        }
+
+        let vec: &Vec<MSCMValue> = &*((*handle).ptr as *mut Vec<MSCMValue> as *const _);
+        let new_vec = vec.clone();
+
+        let ptr = Box::into_raw(Box::new(new_vec)) as *mut c_void;
+        let ret = mscm_make_handle(
+            *VECTOR_TID.get().unwrap(),
+            ptr,
+            Some(dealloc_vec),
+            Some(mark_vec)
+        );
+        mscm_gc_add(rt, ret);
+        ret
     }
 }
 
-extern "C" fn mark_vec(_ptr: *mut c_void) {
+extern "C" fn dealloc_vec(ptr: *mut c_void) {
     unsafe {
-        let vec = _ptr as *mut Vec<MSCMValue>;
+        let _vec = Box::from_raw(ptr as *mut Vec<MSCMValue>);
+    }
+}
+
+extern "C" fn mark_vec(rt: *mut MSCMRuntime, ptr: *mut c_void) {
+    unsafe {
+        let vec = ptr as *mut Vec<MSCMValue>;
         for v in (*vec).iter() {
-            mscm_gc_mark(*v);
+            mscm_gc_mark(rt, *v);
         }
     }
 }

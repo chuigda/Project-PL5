@@ -65,6 +65,13 @@ pub struct MSCMPair {
 }
 
 #[repr(C)]
+pub struct MSCMString {
+    pub base: MSCMValueBase,
+    pub size: usize,
+    pub data: [c_char; 0]
+}
+
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct MSCMHandle {
     pub base: MSCMValueBase,
@@ -87,7 +94,7 @@ pub struct MSCMFunction {
 
 pub type MSCMValue = *mut MSCMValueBase;
 pub type MSCMUserDtor = extern "C" fn(*mut c_void);
-pub type MSCMUserMarker = extern "C" fn(*mut c_void);
+pub type MSCMUserMarker = extern "C" fn(*mut MSCMRuntime, *mut c_void);
 pub type MSCMNativeFnPtr = extern "C" fn(
     *mut MSCMRuntime,
     *mut MSCMScope,
@@ -127,7 +134,7 @@ extern "C" {
 pub type MSCMScope = c_void;
 
 extern "C" {
-    pub fn mscm_scope_new(parent: *mut MSCMScope) -> *mut MSCMScope;
+    pub fn mscm_scope_new(parent: *mut MSCMScope, fat: i8) -> *mut MSCMScope;
     pub fn mscm_scope_push(scope: *mut MSCMScope,
                            name: *const c_char,
                            value: MSCMValue);
@@ -158,8 +165,8 @@ extern "C" {
 
     pub fn mscm_gc_toggle(rt: *mut MSCMRuntime, enable: bool);
     pub fn mscm_gc_add(rt: *mut MSCMRuntime, value: MSCMValue);
-    pub fn mscm_gc_mark(value: MSCMValue);
-    pub fn mscm_gc_mark_scope(scope: *mut MSCMScope);
+    pub fn mscm_gc_mark(rt: *mut MSCMRuntime, value: MSCMValue);
+    pub fn mscm_gc_mark_scope(rt: *mut MSCMRuntime, scope: *mut MSCMScope);
 
     pub fn mscm_runtime_alloc_type_id(rt: *mut MSCMRuntime) -> u32;
 }

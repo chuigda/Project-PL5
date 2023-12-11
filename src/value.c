@@ -97,6 +97,22 @@ mscm_value mscm_make_string(mscm_slice value,
                     case '"':
                         ret->buf[i_out] = '"';
                         break;
+                    case 'x':
+                        if (i_in + 2 < value.len) {
+                            char hex[3] = { value.start[i_in + 1],
+                                            value.start[i_in + 2],
+                                            '\0' };
+                            ret->buf[i_out] = (char)strtol(hex, NULL, 16);
+                            i_in += 2;
+                        }
+                        else {
+                            free(ret);
+                            if (esc_ok) {
+                                *esc_ok = false;
+                            }
+                            return 0;
+                        }
+                        break;
                     default:
                         free(ret);
                         if (esc_ok) {

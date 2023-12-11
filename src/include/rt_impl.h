@@ -56,11 +56,19 @@ typedef struct st_mscm_runtime {
     managed_value *gc_pool;
     managed_scope *scope_pool;
 
+    managed_value *value_queue;
+    managed_value *value_queue_tail;
+
     jmp_buf err_jmp;
     stack_trace *trace;
 
     uint32_t next_type_id;
 } mscm_runtime;
+
+typedef struct st_loop_context {
+    jmp_buf loop_jmp_buf;
+    mscm_value break_value;
+} loop_context;
 
 mscm_runtime *runtime_new(void);
 void runtime_free(mscm_runtime *rt);
@@ -68,6 +76,7 @@ mscm_value runtime_eval_entry(mscm_runtime *rt,
                               mscm_syntax_node node);
 mscm_value runtime_eval(mscm_runtime *rt,
                         mscm_syntax_node syntax_node,
-                        bool multiple);
+                        bool multiple,
+                        loop_context *loop_ctx);
 
 #endif /* MINI_SCHEME_RT_IMPL_H */

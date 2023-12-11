@@ -22,6 +22,7 @@
 
 MSCM_NATIVE_FN(display);
 MSCM_NATIVE_FN(print);
+MSCM_NATIVE_FN(println);
 MSCM_NATIVE_FN(error);
 MSCM_NATIVE_FN(equals);
 MSCM_NATIVE_FN(less_than);
@@ -31,6 +32,9 @@ MSCM_NATIVE_FN(sub);
 MSCM_NATIVE_FN(div);
 MSCM_NATIVE_FN(mod);
 MSCM_NATIVE_FN(string_concat);
+MSCM_NATIVE_FN(string_length);
+MSCM_NATIVE_FN(string_ref);
+MSCM_NATIVE_FN(string_set);
 MSCM_NATIVE_FN(make_pair);
 MSCM_NATIVE_FN(car);
 MSCM_NATIVE_FN(cdr);
@@ -39,6 +43,12 @@ MSCM_NATIVE_FN(list);
 MSCM_NATIVE_FN(set);
 MSCM_NATIVE_FN(set_car);
 MSCM_NATIVE_FN(set_cdr);
+
+MSCM_NATIVE_FN(is_pair);
+MSCM_NATIVE_FN(is_int);
+MSCM_NATIVE_FN(is_float);
+MSCM_NATIVE_FN(is_string);
+MSCM_NATIVE_FN(is_symbol);
 
 static mscm_value g_true_v;
 
@@ -52,6 +62,8 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value display_v =
         mscm_make_native_function("display", display, 0, 0, 0);
     mscm_value print_v = mscm_make_native_function("print", print, 0, 0, 0);
+    mscm_value println_v =
+        mscm_make_native_function("println", println, 0, 0, 0);
     mscm_value error_v =
         mscm_make_native_function("error", error, 0, 0, 0);
     mscm_value equals_v =
@@ -65,6 +77,12 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value mod_v = mscm_make_native_function("mod", mod, 0, 0, 0);
     mscm_value strcat_v =
         mscm_make_native_function("strcat", string_concat, 0, 0, 0);
+    mscm_value strlen_v =
+        mscm_make_native_function("strlen", string_length, 0, 0, 0);
+    mscm_value string_ref_v =
+        mscm_make_native_function("string-ref", string_ref, 0, 0, 0);
+    mscm_value string_set_v =
+        mscm_make_native_function("string-set!", string_set, 0, 0, 0);
     mscm_value cons_v =
         mscm_make_native_function("make-pair", make_pair, 0, 0, 0);
     mscm_value car_v = mscm_make_native_function("car", car, 0, 0, 0);
@@ -78,8 +96,20 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_value set_cdr_v =
         mscm_make_native_function("set-cdr!", set_cdr, 0, 0, 0);
 
+    mscm_value is_pair_v =
+        mscm_make_native_function("pair?", is_pair, 0, 0, 0);
+    mscm_value is_int_v =
+        mscm_make_native_function("int?", is_int, 0, 0, 0);
+    mscm_value is_float_v =
+        mscm_make_native_function("float?", is_float, 0, 0, 0);
+    mscm_value is_string_v =
+        mscm_make_native_function("string?", is_string, 0, 0, 0);
+    mscm_value is_symbol_v =
+        mscm_make_native_function("symbol?", is_symbol, 0, 0, 0);
+
     mscm_runtime_push(rt, "display", (mscm_value)display_v);
     mscm_runtime_push(rt, "print", (mscm_value)print_v);
+    mscm_runtime_push(rt, "println", (mscm_value)println_v);
     mscm_runtime_push(rt, "error", (mscm_value)error_v);
     mscm_runtime_push(rt, "equals?", (mscm_value)equals_v);
     mscm_runtime_push(rt, "=", (mscm_value)equals_v);
@@ -97,6 +127,9 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "%", (mscm_value)mod_v);
     mscm_runtime_push(rt, "string-append", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "string-concat", (mscm_value)strcat_v);
+    mscm_runtime_push(rt, "string-length", (mscm_value)strlen_v);
+    mscm_runtime_push(rt, "string-ref", (mscm_value)string_ref_v);
+    mscm_runtime_push(rt, "string-set!", (mscm_value)string_set_v);
     mscm_runtime_push(rt, "~", (mscm_value)strcat_v);
     mscm_runtime_push(rt, "cons", (mscm_value)cons_v);
     mscm_runtime_push(rt, "car", (mscm_value)car_v);
@@ -106,9 +139,16 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_runtime_push(rt, "set!", (mscm_value)set_v);
     mscm_runtime_push(rt, "set-car!", (mscm_value)set_car_v);
     mscm_runtime_push(rt, "set-cdr!", (mscm_value)set_cdr_v);
+    
+    mscm_runtime_push(rt, "pair?", (mscm_value)is_pair_v);
+    mscm_runtime_push(rt, "int?", (mscm_value)is_int_v);
+    mscm_runtime_push(rt, "float?", (mscm_value)is_float_v);
+    mscm_runtime_push(rt, "string?", (mscm_value)is_string_v);
+    mscm_runtime_push(rt, "symbol?", (mscm_value)is_symbol_v);
 
     mscm_gc_add(rt, display_v);
     mscm_gc_add(rt, print_v);
+    mscm_gc_add(rt, println_v);
     mscm_gc_add(rt, error_v);
     mscm_gc_add(rt, equals_v);
     mscm_gc_add(rt, less_than_v);
@@ -118,6 +158,9 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, div_v);
     mscm_gc_add(rt, mod_v);
     mscm_gc_add(rt, strcat_v);
+    mscm_gc_add(rt, strlen_v);
+    mscm_gc_add(rt, string_ref_v);
+    mscm_gc_add(rt, string_set_v);
     mscm_gc_add(rt, cons_v);
     mscm_gc_add(rt, car_v);
     mscm_gc_add(rt, cdr_v);
@@ -126,6 +169,12 @@ void mscm_load_ext(mscm_runtime *rt) {
     mscm_gc_add(rt, set_v);
     mscm_gc_add(rt, set_car_v);
     mscm_gc_add(rt, set_cdr_v);
+
+    mscm_gc_add(rt, is_pair_v);
+    mscm_gc_add(rt, is_int_v);
+    mscm_gc_add(rt, is_float_v);
+    mscm_gc_add(rt, is_string_v);
+    mscm_gc_add(rt, is_symbol_v);
 }
 
 MSCM_NATIVE_FN(display) {
@@ -166,17 +215,52 @@ MSCM_NATIVE_FN(print) {
     return 0;
 }
 
+MSCM_NATIVE_FN(println) {
+    print(rt, scope, ctx, narg, args);
+    putchar('\n');
+    return 0;
+}
+
 MSCM_NATIVE_FN(error) {
     (void)scope;
     (void)ctx;
 
     fprintf(stderr, "error: ");
     for (size_t i = 0; i < narg; i++) {
-        if (args[i]->type == MSCM_TYPE_STRING) {
+        switch (args[i]->type) {
+        case MSCM_TYPE_STRING: 
+        case MSCM_TYPE_SYMBOL: {
             mscm_string *s = (mscm_string*)args[i];
             fprintf(stderr, "%s", s->buf);
+            break;
         }
-        fputc(' ', stderr);
+        case MSCM_TYPE_INT: {
+            mscm_int *s = (mscm_int*)args[i];
+            fprintf(stderr, "%" PRId64, s->value);
+            break;
+        }
+        case MSCM_TYPE_FLOAT: {
+            mscm_float *s = (mscm_float*)args[i];
+            fprintf(stderr, "%f", s->value);
+            break;
+        }
+        case MSCM_TYPE_FUNCTION: {
+            fprintf(stderr, "<function>");
+            break;
+        }
+        case MSCM_TYPE_HANDLE: {
+            fprintf(stderr, "<handle>");
+            break;
+        }
+        case MSCM_TYPE_PAIR: {
+            fprintf(stderr, "<pair>");
+            break;
+        }
+        case MSCM_TYPE_NATIVE: {
+            fprintf(stderr, "<native>");
+            break;
+        }
+        }
     }
     putchar('\n');
 
@@ -533,6 +617,117 @@ MSCM_NATIVE_FN(string_concat) {
     return ret;
 }
 
+MSCM_NATIVE_FN(string_length) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 1) {
+        fprintf(stderr,
+                "error: string-length: expected 1 argument, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-length: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_value ret = mscm_make_int(s->size);
+    mscm_gc_add(rt, ret);
+    return ret;
+}
+
+MSCM_NATIVE_FN(string_ref) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 2) {
+        fprintf(stderr,
+                "error: string-ref: expected 2 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-ref: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[1] || args[1]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-ref: expected int value, got %s\n",
+                mscm_value_type_name(args[1]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_int *i = (mscm_int*)args[1];
+    if (i->value < 0 || i->value >= (int64_t)s->size) {
+        fprintf(stderr,
+                "error: string-ref: index out of bounds\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    int reti = s->buf[i->value];
+    mscm_value ret = mscm_make_int(reti);
+    mscm_gc_add(rt, ret);
+    return ret;
+}
+
+MSCM_NATIVE_FN(string_set) {
+    (void)scope;
+    (void)ctx;
+
+    if (narg != 3) {
+        fprintf(stderr,
+                "error: string-set!: expected 3 arguments, got %"
+                PRIu64 "\n",
+                narg);
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[0] || args[0]->type != MSCM_TYPE_STRING) {
+        fprintf(stderr,
+                "error: string-set!: expected string value, got %s\n",
+                mscm_value_type_name(args[0]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[1] || args[1]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-set!: expected int value, got %s\n",
+                mscm_value_type_name(args[1]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    if (!args[2] || args[2]->type != MSCM_TYPE_INT) {
+        fprintf(stderr,
+                "error: string-set!: expected int value, got %s\n",
+                mscm_value_type_name(args[2]));
+        mscm_runtime_trace_exit(rt);
+    }
+
+    mscm_string *s = (mscm_string*)args[0];
+    mscm_int *i = (mscm_int*)args[1];
+    mscm_int *c = (mscm_int*)args[2];
+    if (i->value < 0 || i->value >= (int64_t)s->size) {
+        fprintf(stderr,
+                "error: string-set!: index out of bounds\n");
+        mscm_runtime_trace_exit(rt);
+    }
+
+    s->buf[i->value] = (char)c->value;
+    return 0;
+}
+
 MSCM_NATIVE_FN(make_pair) {
     (void)scope;
     (void)ctx;
@@ -665,7 +860,7 @@ MSCM_NATIVE_FN(set_car) {
 
     mscm_pair *p = (mscm_pair*)args[0];
     p->fst = args[1];
-    return args[1];
+    return 0;
 }
 
 MSCM_NATIVE_FN(set_cdr) {
@@ -689,5 +884,32 @@ MSCM_NATIVE_FN(set_cdr) {
 
     mscm_pair *p = (mscm_pair*)args[0];
     p->snd = args[1];
-    return args[1];
+    return 0;
 }
+
+#define MSCM_MAKE_ISA_FN(FNAME, TYPE) \
+    MSCM_NATIVE_FN(FNAME) { \
+        (void)scope; \
+        (void)ctx; \
+        \
+        if (narg != 1) { \
+            fprintf(stderr, \
+                    "error: " #FNAME ": expected 1 argument, got %" \
+                    PRIu64 "\n", \
+                    narg); \
+            mscm_runtime_trace_exit(rt); \
+        } \
+        \
+        if (!args[0] || args[0]->type != TYPE) { \
+            return 0; \
+        } \
+        else { \
+            return g_true_v; \
+        } \
+    }
+
+MSCM_MAKE_ISA_FN(is_pair, MSCM_TYPE_PAIR);
+MSCM_MAKE_ISA_FN(is_int, MSCM_TYPE_INT);
+MSCM_MAKE_ISA_FN(is_float, MSCM_TYPE_FLOAT);
+MSCM_MAKE_ISA_FN(is_string, MSCM_TYPE_STRING);
+MSCM_MAKE_ISA_FN(is_symbol, MSCM_TYPE_SYMBOL);
